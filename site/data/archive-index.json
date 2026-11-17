@@ -1,1 +1,10 @@
-{"snapshots":["2026-11-17T095023Z.json.gz","2026-11-17T095849Z.json.gz","2026-11-17T100238Z.json.gz","2026-11-17T100403Z.json.gz"],"retention_days":30}
+{
+  "snapshots": [
+    "2026-11-17T095023Z.json.gz",
+    "2026-11-17T095849Z.json.gz",
+    "2026-11-17T100238Z.json.gz",
+    "2026-11-17T100403Z.json.gz",
+    "2026-11-17T102901Z.json.gz"
+  ],
+  "retention_days": 30
+}

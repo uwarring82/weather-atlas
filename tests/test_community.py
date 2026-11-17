@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from community import sensemap, wunderground, collect_community
+from community import sensemap, wunderground, collect_community, retain_history
+from datetime import timedelta
 
 class CommunityTests(unittest.TestCase):
     def setUp(self):
@@ -35,3 +36,35 @@ class CommunityTests(unittest.TestCase):
             result,raw=collect_community(self.location,{},self.now,fetch)
         self.assertNotIn('private-test-key',str((result,raw)))
         self.assertEqual(result['wunderground_status'],'unavailable')
+
+    def test_invalid_wu_config_does_not_break_other_sources(self):
+        for setting in ['{typo', '[]', '{"test":"TEST"}', '{"test":[null]}']:
+            with self.subTest(setting=setting), patch.dict('os.environ', {'WU_STATIONS':setting}):
+                result,_=collect_community(self.location,{},self.now,lambda *args:([self.box()], 'https://example.org'))
+            self.assertEqual(result['wunderground_status'],'configuration_error')
+            self.assertEqual(len(result['stations']),1)
+            self.assertIn('WU_STATIONS',result['errors'][0])
+
+    def test_history_survives_selection_changes_and_expires_after_seven_days(self):
+        first=sensemap([self.box()],self.location,self.now)
+        previous={'stations':first}
+        replacement={**first[0],'id':'replacement'}
+        retained=retain_history([replacement],previous,self.now+timedelta(hours=3))
+        self.assertEqual({s['id'] for s in retained},{'test','replacement'})
+        original=next(s for s in retained if s['id']=='test')
+        self.assertEqual(original['status'],'stale')
+        self.assertEqual(original['rows'],first[0]['rows'])
+        self.assertEqual(retain_history([],previous,self.now+timedelta(days=8)),[])
+
+    def test_wu_skips_include_explanations_and_preserve_history(self):
+        first=sensemap([self.box()],self.location,self.now)[0]
+        first.update(id='TEST',provider='Weather Underground')
+        for change,reason in [({'qcStatus':0},'quality-control'),({'lat':50},'15 km'),({'obsTimeUtc':'2026-11-16T00:00:00Z'},'two hours')]:
+            r={'stationID':'TEST','obsTimeUtc':'2026-11-17T11:50:00Z','lat':51.33,'lon':7.28,'qcStatus':1,'metric':{'temp':8},**change}
+            def fetch(url,params):
+                return ({'observations':[r]} if 'weather.com' in url else []),url
+            with self.subTest(reason=reason),patch.dict('os.environ',{'WU_API_KEY':'test','WU_STATIONS':'{"test":["TEST"]}'}):
+                result,_=collect_community(self.location,{'stations':[first]},self.now,fetch)
+            self.assertEqual(result['wunderground_status'],'unavailable')
+            self.assertTrue(any(reason in e for e in result['errors']))
+            self.assertEqual(result['stations'][0]['status'],'stale')

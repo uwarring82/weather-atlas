@@ -2,6 +2,7 @@
 import math
 import os
 import json
+import re
 from datetime import datetime, timedelta, timezone
 
 def timestamp(value):
@@ -51,16 +52,36 @@ def sensemap(raw, location, now):
                          'quality': 'Community sensor; range and freshness checks only', 'rows': [row]})
     return sorted(stations, key=lambda s: s['distance'])[:3]
 
-def wunderground(raw, location, now):
+def wunderground(raw, location, now, errors=None, station_id=None):
     result = []
+    errors = errors if errors is not None else []
+    if not raw.get('observations'):
+        errors.append(f'Weather Underground {station_id or "station"}: no current observation returned')
     for r in raw.get('observations', []):
-        m, measured = r.get('metric', {}), timestamp(r['obsTimeUtc'])
-        if r.get('qcStatus') == 0 or not now-timedelta(hours=2) <= measured <= now:
+        label = station_id or r.get('stationID', 'station')
+        def reject(reason):
+            errors.append(f'Weather Underground {label}: {reason}')
+        try:
+            measured = timestamp(r['obsTimeUtc'])
+        except (KeyError, TypeError, ValueError):
+            reject('invalid observation timestamp')
+            continue
+        m = r.get('metric', {})
+        if station_id and r.get('stationID') != station_id:
+            reject('returned station ID does not match requested station')
+            continue
+        if r.get('qcStatus') == 0:
+            reject('provider quality-control check failed')
+            continue
+        if not now-timedelta(hours=2) <= measured <= now:
+            reject('observation is older than two hours or in the future')
             continue
         if r.get('lat') is None or r.get('lon') is None:
+            reject('station coordinates are missing')
             continue
         meters = distance(location['latitude'], location['longitude'], r['lat'], r['lon'])
         if meters > 15000:
+            reject('station is outside the 15 km search radius')
             continue
         row = {'time': iso(measured), 'temperature': m.get('temp'), 'humidity': r.get('humidity'),
                'wind': m.get('windSpeed'), 'wind_gust': m.get('windGust'), 'precipitation': None,
@@ -69,6 +90,38 @@ def wunderground(raw, location, now):
                        'distance': meters, 'url': 'https://www.wunderground.com/dashboard/pws/' + r['stationID'],
                        'status': 'ok', 'fetched_at': iso(now), 'quality': 'Personal weather station; provider QC ' + str(r.get('qcStatus')), 'rows': [row]})
     return result
+
+def retain_history(stations, previous, now):
+    """Retain all previously selected stations until their final row ages out."""
+    old = {(s['provider'], s['id']): s for s in previous.get('stations', [])}
+    current = {(s['provider'], s['id']): s for s in stations}
+    retained = []
+    for key in dict.fromkeys([*current, *old]):
+        station = dict(current.get(key) or {**old[key], 'status': 'stale'})
+        merged = {r['time']: r for r in old.get(key, {}).get('rows', [])}
+        merged.update({r['time']: r for r in current.get(key, {}).get('rows', [])})
+        station['rows'] = sorted((r for r in merged.values() if now-timedelta(days=7) <= timestamp(r['time']) <= now), key=lambda r: r['time'])
+        if station['rows']:
+            retained.append(station)
+    return retained
+
+def community_fallback(previous, now, message):
+    return {**previous, 'stations': retain_history([], previous, now),
+            'errors': [message], 'status': 'stale', 'search_radius_km': 15,
+            'wunderground_status': previous.get('wunderground_status', 'not_configured')}
+
+def parse_wu_stations(value):
+    try:
+        config = json.loads(value or '{}')
+        if not isinstance(config, dict) or any(
+            not isinstance(k, str) or not isinstance(ids, list) or any(
+                not isinstance(s, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', s) for s in ids
+            ) for k, ids in config.items()
+        ):
+            raise ValueError('invalid station mapping')
+        return config, []
+    except (ValueError, TypeError):
+        return {}, ['Weather Underground: WU_STATIONS must be a JSON object mapping location IDs to arrays of station IDs']
 
 def collect_community(location, previous, now, fetch):
     stations, responses, errors = [], [], []
@@ -83,24 +136,26 @@ def collect_community(location, previous, now, fetch):
         errors.append('openSenseMap: ' + str(e))
         stations.extend({**s, 'status': 'stale'} for s in previous.get('stations', []) if s['provider'] == 'openSenseMap')
     key = os.environ.get('WU_API_KEY')
-    config = json.loads(os.environ.get('WU_STATIONS') or '{}')
+    config, config_errors = parse_wu_stations(os.environ.get('WU_STATIONS'))
+    errors.extend(config_errors)
     requested = config.get(location['id'], [])
-    wu_status = 'not_configured'
+    wu_status = 'configuration_error' if config_errors else 'not_configured'
+    if requested and not key:
+        wu_status = 'unavailable'
+        errors.append('Weather Underground: configured stations need the WU_API_KEY secret')
     if key and requested:
         wu_status = 'ok'
+        wu_errors = []
         for station_id in requested[:3]:
             try:
                 raw, _ = fetch('https://api.weather.com/v2/pws/observations/current', {'stationId': station_id,
                                'format': 'json', 'units': 'm', 'numericPrecision': 'decimal', 'apiKey': key})
-                stations.extend(wunderground(raw, location, now))
+                stations.extend(wunderground(raw, location, now, wu_errors, station_id))
             except Exception:
-                wu_status = 'unavailable'
-                errors.append('Weather Underground: request failed for ' + station_id)
-                stations.extend({**s, 'status': 'stale'} for s in previous.get('stations', []) if s['id'] == station_id)
-    old = {s['id']: s for s in previous.get('stations', [])}
-    for station in stations:
-        merged = {r['time']: r for r in old.get(station['id'], {}).get('rows', [])}
-        merged.update({r['time']: r for r in station['rows']})
-        station['rows'] = sorted((r for r in merged.values() if timestamp(r['time']) >= now-timedelta(days=7)), key=lambda r: r['time'])
-    return {'stations': stations, 'errors': errors, 'wunderground_status': wu_status,
+                wu_errors.append('Weather Underground: request failed for ' + station_id)
+        errors.extend(wu_errors)
+        if wu_errors:
+            wu_status = 'partial' if any(s['provider'] == 'Weather Underground' for s in stations) else 'unavailable'
+    stations = retain_history(stations, previous, now)
+    return {'stations': stations, 'errors': errors, 'status': 'partial' if errors else 'ok', 'wunderground_status': wu_status,
             'fetched_at': iso(now), 'search_radius_km': 15}, responses

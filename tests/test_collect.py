@@ -49,10 +49,27 @@ class NormalizationTests(unittest.TestCase):
             output = Path(directory) / 'latest.json'
             before = '{"locations":[]}\n'
             output.write_text(before)
-            with patch.object(c, 'fetch', side_effect=OSError('offline')), patch.object(c, 'collect_community', return_value=({'stations': []}, [])):
+            with patch.object(c, 'fetch', side_effect=OSError('offline')), patch.object(c, 'collect_meteo_france', side_effect=OSError('offline')), patch.object(c, 'collect_community', return_value=({'stations': [], 'wunderground_status':'not_configured'}, [])):
                 with self.assertRaises(RuntimeError):
                     c.collect(output, datetime(2026, 1, 1, tzinfo=timezone.utc))
             self.assertEqual(output.read_text(), before)
+
+    def test_unexpected_community_error_saves_official_data_then_reports_failure(self):
+        import json
+        now=datetime(2026,1,1,tzinfo=timezone.utc)
+        hourly={'time':[1767229200],'temperature_2m':[1],'precipitation':[0],'wind_speed_10m':[1],'relative_humidity_2m':[80]}
+        def fetch(url,params):
+            if 'open-meteo' in url:return {'hourly':hourly},url
+            raise OSError('offline')
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/'latest.json'
+            with patch.object(c,'fetch',side_effect=fetch),patch.object(c,'collect_meteo_france',side_effect=OSError('offline')),patch.object(c,'collect_community',side_effect=RuntimeError('unexpected')):
+                with self.assertRaisesRegex(RuntimeError,'fresh official data was saved'):
+                    c.collect(output,now)
+            data=json.loads(output.read_text())
+            self.assertEqual(len(data['locations']),3)
+            self.assertEqual(data['locations'][0]['forecasts'][0]['status'],'ok')
+            self.assertEqual(data['locations'][0]['community']['status'],'stale')
 
 
 if __name__ == '__main__':

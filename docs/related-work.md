@@ -27,3 +27,7 @@ For local microclimates, a calibrated sensor at each street would provide strong
 [openSenseMap](https://docs.opensensemap.org/) provides an open API for citizen sensors. This atlas selects nearby outdoor air-temperature sensors with recent readings, shows them as community observations and preserves their individual identities. Its data is available under PDDL 1.0. Basic freshness and plausible-range filtering cannot establish that a sensor is correctly shielded or calibrated.
 
 [Weather Underground PWS](https://www.wunderground.com/pws-api) provides a broad personal weather station network and an authenticated API. A collector adapter is included, configured using an Actions secret and selected station IDs. It is disabled until credentials are supplied. The current-conditions product reports precipitation accumulated since midnight, which must not be compared as if it were an hourly rainfall total. Provider quality flags and observation age are retained.
+
+## French station coverage
+
+Xonrupt-Longemer uses the official [Météo-France hourly climate dataset](https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires). Metropolitan timestamps are UTC and current two-year files are published daily. The nearest usable station in Vosges department 88 is Gérardmer, about 7 km from the configured village centre. These are delayed observations, distinct from live model forecasts. Wind and humidity are unavailable at that station and remain blank.

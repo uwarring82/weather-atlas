@@ -1,4 +1,5 @@
 [
   {"id":"hasslinghausen","name":"Haßlinghausen","street":"Steinklippe","region":"Sprockhövel · Nordrhein-Westfalen","latitude":51.3313,"longitude":7.2843,"osm_way":28942613},
-  {"id":"freiburg","name":"Freiburg","street":"Hermann-Herder-Straße","region":"Neuburg · Baden-Württemberg","latitude":48.0029,"longitude":7.8501,"osm_way":4538046}
+  {"id":"freiburg","name":"Freiburg","street":"Hermann-Herder-Straße","region":"Neuburg · Baden-Württemberg","latitude":48.0029,"longitude":7.8501,"osm_way":4538046},
+  {"id":"xonrupt-longemer","name":"Xonrupt-Longemer","street":"Village centre · France","region":"Vosges · Grand Est","latitude":48.0813,"longitude":6.9267,"osm_relation":86306,"observation_provider":"meteo_france"}
 ]

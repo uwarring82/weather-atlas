@@ -21,6 +21,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -42,6 +45,10 @@ jobs:
         run: python scripts/collect.py
       - name: Require a valid dataset
         run: python scripts/validate.py
+      - name: Check collection freshness
+        id: freshness
+        continue-on-error: true
+        run: python scripts/validate.py --max-age-hours 3
       - name: Record collected data
         run: |
           git config user.name 'weather-atlas[bot]'
@@ -49,7 +56,15 @@ jobs:
           git add site/data
           if ! git diff --cached --quiet; then
             git commit -m 'data: refresh weather observations and forecasts'
-            git push
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then
+                break
+              fi
+              if [ "$attempt" = 3 ]; then
+                exit 1
+              fi
+            done
           fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
@@ -58,3 +73,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Report collection failure after publishing
+        if: ${{ always() && (steps.collect.outcome == 'failure' || steps.freshness.outcome == 'failure') }}
+        run: |
+          echo 'Weather collection failed. See the collection step; any valid fallback data was still published.'
+          exit 1
