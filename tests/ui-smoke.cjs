@@ -1,7 +1,8 @@
 // Rendering checks across the real dataset; visual browser QA remains separate.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const data=JSON.parse(fs.readFileSync('site/data/latest.json','utf8')),elements=new Map();
-function element(id){if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',hidden:false,href:'',listeners:{},addEventListener(n,f){this.listeners[n]=f;},querySelectorAll(){return[];}});return elements.get(id);}
+const markup=fs.readFileSync('site/index.html','utf8');
+function element(id){assert.ok(markup.includes(`id="${id.slice(1)}"`),`Missing element ${id}`);if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',hidden:false,href:'',listeners:{},addEventListener(n,f){this.listeners[n]=f;},querySelectorAll(){return[];}});return elements.get(id);}
 const context=vm.createContext({console,Intl,Date,Map,Set,Number,String,Math,document:{querySelector:element},fetch:async()=>({ok:true,json:async()=>data})});
 vm.runInContext(fs.readFileSync('site/app.js','utf8'),context);
 setImmediate(()=>{

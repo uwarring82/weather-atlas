@@ -39,7 +39,7 @@ function renderChart(location) {
   $('#horizon').hidden = state.mode !== 'forecast';
   $('#legend').innerHTML = series.map(s=>`<span class="legend-item"><i style="background:${s.color}"></i>${escapeHTML(s.label)}</span>`).join('');
   $('#chart-summary').textContent = `${spec.label} (${spec.unit}) · ${state.mode==='forecast'?`next ${state.hours===48?'48 hours':'7 days'}`:'last 7 days'} · all times Europe/Berlin`;
-  $('#chart-note').textContent = state.mode==='observations' ? 'Measured at nearby DWD stations. Station details below; source may change between hours. Lines break at missing readings. Precipitation is the total for the hour ending at the indicated time.' : 'Forecast samples at each service’s available resolution. Hover over points for values, or inspect the table. Precipitation is the total for the preceding hour; MET Norway’s longer accumulation periods are left blank. Null values and hourly data gaps are not interpolated.';
+  $('#chart-note').textContent = state.mode==='observations' ? 'Measured at nearby DWD stations. Station details below; source may change between hours. Lines break at missing readings. Precipitation is the total for the hour ending at the indicated time.' : 'Forecast samples at each service’s available resolution. Hover over points for values, or inspect the table. Precipitation is the total for the preceding hour; MET Norway’s longer accumulation periods are left blank. Missing values stay blank; lines connect native forecast samples.';
   if (!values.length) {
     $('#chart').innerHTML = '<p class="empty">No values available for this metric and time range.</p>';
     $('#table').innerHTML = '<p>No hourly values available.</p>';
@@ -66,13 +66,13 @@ function renderChart(location) {
       const t=Date.parse(row.time),v=row[metric];
       if(!valid(v)){connected=false;continue;}
       const gap=previous!==null&&t-previous>1.5*3600000;
-      // Native multi-hour temperature samples may connect; hourly accumulations may not.
+      // Connect native forecast samples; do not bridge missing hourly observations or rain.
       const move=!connected || (gap && (metric==='precipitation'||state.mode==='observations'));
       path+=`${move?'M':'L'}${x(t).toFixed(2)},${y(v).toFixed(2)} `;connected=true;previous=t;
     }
     svg+=`<path class="series" d="${path}" stroke="${s.color}"/>`;
     for(const row of s.rows.filter(r=>valid(r[metric]))){
-      svg+=`<circle cx="${x(Date.parse(row.time))}" cy="${y(row[metric])}" r="4" fill="${s.color}" fill-opacity="0.01"><title>${escapeHTML(s.label)} · ${escapeHTML(date(row.time))}: ${value(row[metric])} ${spec.unit}</title></circle>`;
+      svg+=`<circle cx="${x(Date.parse(row.time))}" cy="${y(row[metric])}" r="4" fill="${s.color}" fill-opacity="${s.rows.length===1?'0.8':'0.01'}"><title>${escapeHTML(s.label)} · ${escapeHTML(date(row.time))}: ${value(row[metric])} ${spec.unit}</title></circle>`;
     }
   }
   svg+='</svg>';$('#chart').innerHTML=svg;
@@ -101,7 +101,7 @@ function renderCommunity(location){
     const row=s.rows.at(-1),delayed=s.status!=='ok'||Date.now()-Date.parse(row.time)>2*3600000;
     return `<article class="community-card"><div class="community-heading"><a href="${escapeHTML(s.url)}">${escapeHTML(s.name)} ↗</a><span class="status">${delayed?'delayed':'reporting'}</span></div><p class="fineprint">${escapeHTML(s.provider)} · ${value(s.distance/1000)} km away</p><div class="community-temp">${value(row.temperature)}<small> °C</small></div><p class="fineprint">Humidity ${value(row.humidity,0)}%${row.humidity_time?` · ${escapeHTML(hour(row.humidity_time))}`:''}${valid(row.wind)?`<br>Wind ${value(row.wind)} km/h · gusts ${value(row.wind_gust)} km/h`:''}<br>Measured ${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}</p><span class="fineprint">${escapeHTML(s.quality)}</span></article>`;
   }).join(''):'<p class="fineprint">No recent outdoor community readings found within 15 km. Official observations remain available above.</p>';
-  $('#community-note').textContent='Community readings depend on sensor placement and maintenance. Only outdoor openSenseMap temperature readings from the last two hours, within −35 to 55 °C, are selected. History builds from hourly collections and appears under Recent observations. '+(community.wunderground_status==='not_configured'?'Weather Underground adapter ready; a repository API secret and station IDs are needed to enable it.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' Some community sources could not be refreshed.':'');
+  $('#community-note').textContent='Community readings depend on sensor placement and maintenance. Only outdoor openSenseMap temperature readings from the last two hours, within −35 to 55 °C, are selected. History builds from hourly collections and appears under Recent observations. '+(community.wunderground_status==='not_configured'?'Weather Underground is not connected.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' Some community sources could not be refreshed.':'');
 }
 $('#locations').addEventListener('click',event=>{const b=event.target.closest('[data-location]');if(b){state.location=b.dataset.location;render();}});
 $('#mode-controls').addEventListener('click',event=>{const b=event.target.closest('[data-mode]');if(b){state.mode=b.dataset.mode;for(const x of $('#mode-controls').querySelectorAll('button'))x.setAttribute('aria-pressed',x===b);render();}});
