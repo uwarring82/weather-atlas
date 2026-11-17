@@ -1,18 +1,18 @@
 location,station_id,provider,station_name,distance_m,distance_km,distance_method,coordinates_approximate,latitude,longitude,latest_observation_utc,temperature_c,humidity_percent,wind_kmh,url
-Haßlinghausen,10959,Sensor.Community,Sensor.Community 10959,2645,2.645,great-circle,True,51.328,7.322,2026-11-17T11:47:32Z,10.33,99.86,,https://data.sensor.community/airrohr/v1/sensor/21594/
-Haßlinghausen,649551661d67340007314afb,openSenseMap,Gevelsberg-Kipp,3324,3.324,great-circle,,51.320672,7.329007,2026-11-17T11:49:04Z,10.13,88.0,,https://opensensemap.org/explore/649551661d67340007314afb
-Haßlinghausen,69109,Sensor.Community,Sensor.Community 69109,4520,4.52,great-circle,False,51.2928142,7.3052514,2026-11-17T11:48:20Z,9.07,100.0,,https://data.sensor.community/airrohr/v1/sensor/79634/
-Haßlinghausen,13700,DWD,GEVELSBERG-OBERB.,4567,4.567,great-circle,,51.33,7.35,2026-11-17T11:00:00Z,8.9,93,22.0,https://api.brightsky.dev/weather?lat=51.3313&lon=7.2843&date=2026-11-10T11%3A49%3A07Z&last_date=2026-11-17T11%3A49%3A07Z&tz=UTC&units=dwd&max_dist=50000
-Haßlinghausen,64906,Sensor.Community,Sensor.Community 64906,6379,6.379,great-circle,True,51.29,7.348,2026-11-17T11:47:38Z,12.81,73.11,,https://data.sensor.community/airrohr/v1/sensor/76156/
-Haßlinghausen,11112,Sensor.Community,Sensor.Community 11112,8002,8.002,great-circle,True,51.27,7.224,2026-11-17T11:48:31Z,9.3,99.9,,https://data.sensor.community/airrohr/v1/sensor/21895/
-Haßlinghausen,68321,Sensor.Community,Sensor.Community 68321,8121,8.121,great-circle,True,51.276,7.208,2026-11-17T11:47:16Z,14.53,100.0,,https://data.sensor.community/airrohr/v1/sensor/78926/
-Freiburg,63678,Sensor.Community,Sensor.Community 63678,1031,1.031,great-circle,True,47.994,7.854,2026-11-17T11:47:12Z,15.8,99.9,,https://data.sensor.community/airrohr/v1/sensor/2453/
-Freiburg,5b8449037c519100190fc728,openSenseMap,PM Freiburg City Schlossbergring,1133,1.133,great-circle,,47.993157,7.854577,2026-11-17T11:13:06Z,15.6,99.9,,https://opensensemap.org/explore/5b8449037c519100190fc728
-Freiburg,14509,Sensor.Community,Sensor.Community 14509,1222,1.222,great-circle,True,47.992,7.848,2026-11-17T11:47:24Z,20.9,59.7,,https://data.sensor.community/airrohr/v1/sensor/2439/
-Freiburg,40803,Sensor.Community,Sensor.Community 40803,1233,1.233,great-circle,False,48.013987,7.850195,2026-11-17T11:48:29Z,16.4,99.9,,https://data.sensor.community/airrohr/v1/sensor/25000/
-Freiburg,451,Sensor.Community,Sensor.Community 451,1763,1.763,great-circle,True,47.988,7.842,2026-11-17T11:44:06Z,16.53,100.0,,https://data.sensor.community/airrohr/v1/sensor/929/
-Freiburg,94808,Sensor.Community,Sensor.Community 94808,1859,1.859,great-circle,True,47.99,7.866,2026-11-17T11:47:42Z,13.73,46.43,,https://data.sensor.community/airrohr/v1/sensor/101297/
-Freiburg,01443,DWD,FREIBURG,2419,2.419,great-circle,,48.02,7.83,2026-11-17T11:00:00Z,15.8,73,25.9,https://api.brightsky.dev/weather?lat=48.0029&lon=7.8501&date=2026-11-10T11%3A49%3A07Z&last_date=2026-11-17T11%3A49%3A07Z&tz=UTC&units=dwd&max_dist=50000
+Haßlinghausen,10959,Sensor.Community,Sensor.Community 10959,2645,2.645,great-circle,True,51.328,7.322,2026-11-17T13:33:05Z,12.06,100.0,,https://data.sensor.community/airrohr/v1/sensor/21594/
+Haßlinghausen,649551661d67340007314afb,openSenseMap,Gevelsberg-Kipp,3324,3.324,great-circle,,51.320672,7.329007,2026-11-17T13:33:45Z,12.11,87.0,,https://opensensemap.org/explore/649551661d67340007314afb
+Haßlinghausen,69109,Sensor.Community,Sensor.Community 69109,4520,4.52,great-circle,False,51.2928142,7.3052514,2026-11-17T13:32:37Z,11.41,100.0,,https://data.sensor.community/airrohr/v1/sensor/79634/
+Haßlinghausen,13700,DWD,GEVELSBERG-OBERB.,4567,4.567,great-circle,,51.33,7.35,2026-11-17T12:00:00Z,10.1,96,15.1,https://api.brightsky.dev/weather?lat=51.3313&lon=7.2843&date=2026-11-10T13%3A35%3A31Z&last_date=2026-11-17T13%3A35%3A31Z&tz=UTC&units=dwd&max_dist=50000
+Haßlinghausen,64906,Sensor.Community,Sensor.Community 64906,6379,6.379,great-circle,True,51.29,7.348,2026-11-17T13:34:15Z,14.89,73.17,,https://data.sensor.community/airrohr/v1/sensor/76156/
+Haßlinghausen,11112,Sensor.Community,Sensor.Community 11112,8002,8.002,great-circle,True,51.27,7.224,2026-11-17T13:34:58Z,10.7,99.9,,https://data.sensor.community/airrohr/v1/sensor/21895/
+Haßlinghausen,68321,Sensor.Community,Sensor.Community 68321,8121,8.121,great-circle,True,51.276,7.208,2026-11-17T13:33:05Z,16.1,100.0,,https://data.sensor.community/airrohr/v1/sensor/78926/
+Freiburg,63678,Sensor.Community,Sensor.Community 63678,1031,1.031,great-circle,True,47.994,7.854,2026-11-17T13:32:52Z,15.3,99.9,,https://data.sensor.community/airrohr/v1/sensor/2453/
+Freiburg,5b8449037c519100190fc728,openSenseMap,PM Freiburg City Schlossbergring,1133,1.133,great-circle,,47.993157,7.854577,2026-11-17T13:26:58Z,15.4,99.9,,https://opensensemap.org/explore/5b8449037c519100190fc728
+Freiburg,14509,Sensor.Community,Sensor.Community 14509,1222,1.222,great-circle,True,47.992,7.848,2026-11-17T13:32:56Z,20.1,59.0,,https://data.sensor.community/airrohr/v1/sensor/2439/
+Freiburg,40803,Sensor.Community,Sensor.Community 40803,1233,1.233,great-circle,False,48.013987,7.850195,2026-11-17T13:33:34Z,16.7,99.9,,https://data.sensor.community/airrohr/v1/sensor/25000/
+Freiburg,451,Sensor.Community,Sensor.Community 451,1763,1.763,great-circle,True,47.988,7.842,2026-11-17T13:32:52Z,15.73,100.0,,https://data.sensor.community/airrohr/v1/sensor/929/
+Freiburg,94808,Sensor.Community,Sensor.Community 94808,1859,1.859,great-circle,True,47.99,7.866,2026-11-17T13:33:34Z,13.49,45.24,,https://data.sensor.community/airrohr/v1/sensor/101297/
+Freiburg,01443,DWD,FREIBURG,2419,2.419,great-circle,,48.02,7.83,2026-11-17T12:00:00Z,16.0,73,38.2,https://api.brightsky.dev/weather?lat=48.0029&lon=7.8501&date=2026-11-10T13%3A35%3A31Z&last_date=2026-11-17T13%3A35%3A31Z&tz=UTC&units=dwd&max_dist=50000
 Xonrupt-Longemer,88196009,Météo-France,GERARDMER,6961,6.961,great-circle,,48.072167,6.834,2026-11-17T04:00:00Z,9.7,,,https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires
 Xonrupt-Longemer,88075005,Météo-France,LA_BRESSE_SAPC,8261,8.261,great-circle,,48.007667,6.9415,2026-11-17T04:00:00Z,9.1,,,https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires
 Xonrupt-Longemer,88486003,Météo-France,VAGNEY,13804,13.804,great-circle,,48.042333,6.750333,2026-11-17T04:00:00Z,8.5,100.0,27.0,https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires
