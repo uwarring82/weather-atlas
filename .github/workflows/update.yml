@@ -1,0 +1,60 @@
+name: Collect weather and publish Pages
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: weather-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check normalization and browser JavaScript
+        run: |
+          python -m unittest discover -s tests -v
+          node --check site/app.js
+          node tests/ui-smoke.cjs
+      - name: Collect recent observations and forecasts
+        # An upstream outage should still allow site fixes to deploy.
+        id: collect
+        continue-on-error: true
+        env:
+          WU_API_KEY: ${{ secrets.WU_API_KEY }}
+          WU_STATIONS: ${{ vars.WU_STATIONS }}
+        run: python scripts/collect.py
+      - name: Require a valid dataset
+        run: python scripts/validate.py
+      - name: Record collected data
+        run: |
+          git config user.name 'weather-atlas[bot]'
+          git config user.email 'weather-atlas[bot]@users.noreply.github.com'
+          git add site/data
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: refresh weather observations and forecasts'
+            git push
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
