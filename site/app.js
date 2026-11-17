@@ -8,7 +8,15 @@ const valid = (v) => typeof v === 'number' && Number.isFinite(v);
 const value = (v, digits=1) => valid(v) ? v.toLocaleString('en-GB', {maximumFractionDigits:digits,minimumFractionDigits:digits}) : '—';
 const date = (v, options={}) => new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/Berlin', day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',...options}).format(new Date(v));
 const hour = (v) => new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Berlin',hour:'2-digit',minute:'2-digit'}).format(new Date(v));
-const old = (item) => item.status !== 'ok' || !item.fetched_at || Date.now()-Date.parse(item.fetched_at)>(item.stale_after_hours||3)*3600000;
+const old = (item) => {
+  if(item.status!=='ok')return true;
+  if(Array.isArray(item.sources)){
+    const measured=[...item.rows].reverse().find(r=>valid(r.temperature)&&Date.parse(r.time)<=Date.now());
+    const limit=item.provider==='Météo-France'?36:3;
+    return !measured||Date.now()-Date.parse(measured.time)>limit*3600000;
+  }
+  return !item.fetched_at||Date.now()-Date.parse(item.fetched_at)>3*3600000;
+};
 const age = (timestamp) => {
   if (!timestamp) return 'Unavailable';
   const h = Math.max(0, (Date.now()-Date.parse(timestamp))/3600000);
@@ -17,11 +25,22 @@ const age = (timestamp) => {
 function latestObservation(location) {
   return [...location.observations.rows].reverse().find(r => valid(r.temperature) && Date.parse(r.time)<=Date.now());
 }
+function reportingCommunity(location){
+  return [...(location.community?.stations||[])].filter(s=>{
+    const row=s.rows.at(-1),time=Date.parse(row?.time);
+    return s.status==='ok'&&valid(row?.temperature)&&time<=Date.now()&&Date.now()-time<=2*3600000;
+  }).sort((a,b)=>a.distance-b.distance).slice(0,3);
+}
+function communitySeries(location,metric,now){
+  return (location.community?.stations||[]).map(s=>({...s,rows:s.rows.filter(r=>Date.parse(r.time)>=now-7*86400000&&Date.parse(r.time)<=now)}))
+    .filter(s=>s.rows.some(r=>valid(r[metric]))).sort((a,b)=>a.distance-b.distance).slice(0,3)
+    .map((s,i)=>({...s,label:`${s.name} · ${s.status==='stale'?'recently seen':'community'}`,color:COLORS[i+1]}));
+}
 function renderLocations() {
   $('#locations').innerHTML = state.data.locations.map((l,i) => {
     const r = latestObservation(l);
     const details=[valid(r?.wind)?`${value(r.wind,0)} km/h wind`:null,valid(r?.humidity)?`${value(r.humidity,0)}% humidity`:null].filter(Boolean).join(' · ')||'Wind and humidity not reported';
-    return `<button class="location-card" type="button" data-location="${l.id}" aria-pressed="${l.id===state.location}"><span class="number">0${i+1} / ${escapeHTML(l.region)}</span><span class="selected-marker">${l.id===state.location?'● SELECTED':'↗ EXPLORE'}</span><h2>${escapeHTML(l.name)}</h2><span class="street">${escapeHTML(l.street)}</span><div class="card-weather"><div class="temperature">${value(r?.temperature)}<small> °C</small></div><div class="card-meta">${escapeHTML(l.observations.provider||'Official station')} observation<br>${r?escapeHTML(date(r.time)):'No observations available'}<br>${r?details:'Check source status'}</div></div></button>`;
+    return `<button class="location-card" type="button" data-location="${l.id}" aria-pressed="${l.id===state.location}"><span class="number">0${i+1} / ${escapeHTML(l.region)}</span><span class="selected-marker">${l.id===state.location?'● SELECTED':'↗ EXPLORE'}</span><h2>${escapeHTML(l.name)}</h2><span class="street">${escapeHTML(l.street)}</span><div class="card-weather"><div class="temperature">${value(r?.temperature)}<small> °C</small></div><div class="card-meta">${escapeHTML(l.observations.provider||'Official station')} observation<br>${r?escapeHTML(date(r.time)):'No observations available'}<br>${r?`${old(l.observations)?'Delayed · ':''}${escapeHTML(age(r.time))}${l.observations.provider==='Météo-France'?' · published daily':''}`:''}<br>${r?details:'Check source status'}</div></div></button>`;
   }).join('');
   const degraded = state.data.locations.some(l => old(l.observations) || l.forecasts.some(old));
   $('#collection-status').innerHTML = `<i class="dot ${degraded?'warn':''}"></i>${degraded?'Some sources delayed · ':''}Collected ${escapeHTML(date(state.data.collected_at))} CET`;
@@ -30,7 +49,7 @@ function renderLocations() {
 }
 function seriesFor(location) {
   const now = Date.now();
-  if (state.mode === 'observations') return [{id:'dwd',label:(location.observations.provider||'Official station')+' observations',color:COLORS[0],rows:location.observations.rows.filter(r=>Date.parse(r.time)>=now-7*86400000 && Date.parse(r.time)<=now)},...(location.community?.stations||[]).filter(s=>s.rows.some(r=>valid(r[state.metric]))).map((s,i)=>({...s,label:`${s.name} · community`,color:[COLORS[1],COLORS[2],COLORS[3],'#a78c48','#739985','#856a58'][i%6],rows:s.rows.filter(r=>Date.parse(r.time)>=now-7*86400000&&Date.parse(r.time)<=now)}))];
+  if (state.mode === 'observations') return [{id:'dwd',label:(location.observations.provider||'Official station')+' observations',color:COLORS[0],rows:location.observations.rows.filter(r=>Date.parse(r.time)>=now-7*86400000 && Date.parse(r.time)<=now)},...communitySeries(location,state.metric,now)];
   return location.forecasts.map((f,i)=>({...f,label:f.label+(old(f)?' · delayed':''), color:COLORS[i],rows:f.rows.filter(r=>Date.parse(r.time)>=now && Date.parse(r.time)<=now+state.hours*3600000)}));
 }
 function renderChart(location) {
@@ -40,7 +59,7 @@ function renderChart(location) {
   $('#horizon').hidden = state.mode !== 'forecast';
   $('#legend').innerHTML = series.map(s=>`<span class="legend-item"><i style="background:${s.color}"></i>${escapeHTML(s.label)}</span>`).join('');
   $('#chart-summary').textContent = `${spec.label} (${spec.unit}) · ${state.mode==='forecast'?`next ${state.hours===48?'48 hours':'7 days'}`:'last 7 days'} · all times Europe/Berlin`;
-  $('#chart-note').textContent = state.mode==='observations' ? 'Measured at nearby official stations. Station details below; source may change between hours. Lines break at missing readings. Precipitation is the total for the hour ending at the indicated time.' : 'Forecast samples at each service’s available resolution. Hover over points for values, or inspect the table. Precipitation is the total for the preceding hour; MET Norway’s longer accumulation periods are left blank. Missing values stay blank; lines connect native forecast samples.';
+  $('#chart-note').textContent = state.mode==='observations' ? 'Official observations plus up to three nearest community stations with values for this metric in the last seven days. Recently seen stations may no longer be reporting. Full retained history is in the data download. Lines break at missing readings. Precipitation is the total for the hour ending at the indicated time.' : 'Forecast samples at each service’s available resolution. Hover over points for values, or inspect the table. Precipitation is the total for the preceding hour; MET Norway’s longer accumulation periods are left blank. Missing values stay blank; lines connect native forecast samples.';
   if (!values.length) {
     $('#chart').innerHTML = '<p class="empty">No values available for this metric and time range.</p>';
     $('#table').innerHTML = '<p>No hourly values available.</p>';
@@ -98,11 +117,12 @@ function render(){
 }
 function renderCommunity(location){
   const community=location.community||{stations:[]};
-  $('#community').innerHTML=community.stations.length?community.stations.map(s=>{
+  const reporting=reportingCommunity(location);
+  $('#community').innerHTML=reporting.length?reporting.map(s=>{
     const row=s.rows.at(-1),delayed=s.status!=='ok'||Date.now()-Date.parse(row.time)>2*3600000;
     return `<article class="community-card"><div class="community-heading"><a href="${escapeHTML(s.url)}">${escapeHTML(s.name)} ↗</a><span class="status">${delayed?'delayed':'reporting'}</span></div><p class="fineprint">${escapeHTML(s.provider)} · ${value(s.distance/1000)} km away</p><div class="community-temp">${value(row.temperature)}<small> °C</small></div><p class="fineprint">Humidity ${value(row.humidity,0)}%${row.humidity_time?` · ${escapeHTML(hour(row.humidity_time))}`:''}${valid(row.wind)?`<br>Wind ${value(row.wind)} km/h · gusts ${value(row.wind_gust)} km/h`:''}<br>Measured ${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}</p><span class="fineprint">${escapeHTML(s.quality)}</span></article>`;
   }).join(''):'<p class="fineprint">No recent outdoor community readings found within 15 km. Official observations remain available above.</p>';
-  $('#community-note').textContent='Community readings depend on sensor placement and maintenance. Only outdoor openSenseMap temperature readings from the last two hours, within −35 to 55 °C, are selected. History builds from hourly collections and appears under Recent observations. '+(community.wunderground_status==='not_configured'?'Weather Underground is not connected.':community.wunderground_status==='configuration_error'?'Weather Underground configuration needs correction.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':community.wunderground_status==='partial'?'Some Weather Underground stations are unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' '+community.errors.join(' · '):'');
+  $('#community-note').textContent='Showing up to three nearest stations currently reporting. Community readings depend on sensor placement and maintenance. Outdoor openSenseMap temperatures must be within −35 to 55 °C and less than two hours old. All selected stations retain seven days of history in the download, including those no longer reporting. '+(community.wunderground_status==='not_configured'?'Weather Underground is not connected.':community.wunderground_status==='configuration_error'?'Weather Underground configuration needs correction.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':community.wunderground_status==='partial'?'Some Weather Underground stations are unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' '+community.errors.join(' · '):'');
 }
 $('#locations').addEventListener('click',event=>{const b=event.target.closest('[data-location]');if(b){state.location=b.dataset.location;render();}});
 $('#mode-controls').addEventListener('click',event=>{const b=event.target.closest('[data-mode]');if(b){state.mode=b.dataset.mode;for(const x of $('#mode-controls').querySelectorAll('button'))x.setAttribute('aria-pressed',x===b);render();}});

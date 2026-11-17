@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import math
 from pathlib import Path
+from freshness import latest_observation_time, observation_limit_hours
 
 ROOT = Path(__file__).resolve().parents[1]
 FIELDS = ('temperature', 'precipitation', 'wind', 'humidity')
@@ -32,6 +33,11 @@ def validate(data, locations, now=None, max_age_hours=None):
     assert {l['id'] for l in data['locations']} == {l['id'] for l in locations}
     assert len(data['locations']) == len(locations), 'Duplicate location IDs'
     for location in data['locations']:
+        if max_age_hours is not None:
+            latest = latest_observation_time(location['observations'])
+            assert latest is not None, f"{location['id']}: no valid station temperature observations"
+            limit = observation_limit_hours(location['observations'], max_age_hours)
+            assert now-stamp(latest) <= timedelta(hours=limit), f"{location['id']}: newest observation is too old (limit {limit} h)"
         assert {s['id'] for s in location['forecasts']} == {'dwd_icon', 'ecmwf_ifs025', 'gfs_seamless', 'met_no'}
         for source in [location['observations'], *location['forecasts']]:
             assert source['status'] in {'ok', 'stale', 'unavailable'}

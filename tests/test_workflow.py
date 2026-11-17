@@ -22,6 +22,9 @@ class WorkflowTests(unittest.TestCase):
             git(collector,'add','.')
             git(collector,'commit','-m','initial')
             git(collector,'push','origin','main')
+            git(root,'clone','--depth','1',(root/'origin.git').as_uri(),'shallow-collector')
+            collector=root/'shallow-collector'
+            self.assertEqual(git(collector,'rev-parse','--is-shallow-repository').strip(),'true')
             git(root,'clone',str(root/'origin.git'),'human')
             human=root/'human'
             git(human,'config','user.name','Test')

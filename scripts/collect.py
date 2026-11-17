@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from community import collect_community, community_fallback
 from meteo_france import collect as collect_meteo_france
+from freshness import mark_observation_freshness
 
 ROOT = Path(__file__).resolve().parents[1]
 UTC = timezone.utc
@@ -147,6 +148,7 @@ def collect(output, now):
             print(f"WARNING {loc['id']} observations: {error}", flush=True)
             cached = last.get("observations", {})
             loc["observations"] = {**cached, "status": "stale" if cached else "unavailable", "error": str(error), "rows": cached.get("rows", []), "sources": cached.get("sources", [])}
+        loc['observations'] = mark_observation_freshness(loc['observations'], now)
         try:
             loc['community'], community_raw = collect_community(location, last.get('community', {}), now, fetch)
             archive['responses'].extend(community_raw)

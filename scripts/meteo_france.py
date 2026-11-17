@@ -5,9 +5,12 @@ import gzip
 import io
 import math
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 from community import distance, iso, timestamp
+from freshness import mark_observation_freshness
 
 DATASET = 'https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires'
+PUBLICATION_NOTE = 'Météo-France publishes this hourly station file daily; it is checked hourly for changes. Measurements older than 36 hours are flagged as delayed. Unmeasured parameters remain blank.'
 
 def value(row, field):
     # 0: protected, 1: validated, 9: filtered. 2 is doubtful: leave blank.
@@ -45,18 +48,33 @@ def normalize(rows, location, now):
     return sorted(nearest['rows'], key=lambda r: r['time']), [nearest['source']], nearest['raw']
 
 def collect(location, previous, now, user_agent):
-    # The 10 MB departmental file is published daily, not hourly. Reuse it for
-    # six hours, retaining the actual retrieval timestamp and measurement age.
-    if previous.get('provider') == 'Météo-France' and previous.get('status') == 'ok' and now-timestamp(previous['fetched_at']) < timedelta(hours=6):
-        return {**previous, 'rows': [r for r in previous['rows'] if timestamp(r['time']) >= now-timedelta(days=7)], 'checked_at': iso(now)}, None
-    url = f"https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_88_latest-{now.year-1}-{now.year}.csv.gz"
-    with urlopen(Request(url, headers={'User-Agent': user_agent}), timeout=90) as response:
-        modified = response.headers.get('Last-Modified')
-        reader = csv.DictReader(io.TextIOWrapper(gzip.GzipFile(fileobj=response), encoding='utf-8-sig'), delimiter=';')
-        rows, sources, raw = normalize(reader, location, now)
+    # Check hourly, but transfer the 10 MB daily file only when it changes.
+    # At New Year the publisher may still be using the previous filename.
+    base = 'https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/'
+    urls = [f'{base}H_88_latest-{year-1}-{year}.csv.gz' for year in [now.year, now.year-1]]
+    for index, url in enumerate(urls):
+        headers = {'User-Agent': user_agent}
+        if previous.get('url') == url and previous.get('source_last_modified') and previous.get('rows'):
+            headers['If-Modified-Since'] = previous['source_last_modified']
+        try:
+            with urlopen(Request(url, headers=headers), timeout=90) as response:
+                modified = response.headers.get('Last-Modified')
+                reader = csv.DictReader(io.TextIOWrapper(gzip.GzipFile(fileobj=response), encoding='utf-8-sig'), delimiter=';')
+                rows, sources, raw = normalize(reader, location, now)
+            break
+        except HTTPError as error:
+            if error.code == 304 and previous.get('url') == url and previous.get('rows'):
+                item = {**previous, 'status': 'ok', 'checked_at': iso(now),
+                        'publication_note': PUBLICATION_NOTE,
+                        'rows': [r for r in previous['rows'] if timestamp(r['time']) >= now-timedelta(days=7)]}
+                item.pop('stale_after_hours', None)
+                return mark_observation_freshness(item, now), None
+            if error.code == 404 and index == 0:
+                continue
+            raise
     item = {'provider': 'Météo-France', 'status': 'ok', 'fetched_at': iso(now), 'checked_at': iso(now), 'url': url,
-        'dataset_url': DATASET, 'publication': 'Daily file of hourly observations', 'stale_after_hours': 24,
-        'publication_note': 'Météo-France publishes this hourly station file daily; it is checked every six hours. Unmeasured parameters remain blank.',
+        'dataset_url': DATASET, 'publication': 'Daily file of hourly observations',
+        'publication_note': PUBLICATION_NOTE,
         'source_last_modified': modified, 'rows': rows, 'sources': sources}
-    return item, {'location': location['id'], 'source': 'Météo-France', 'url': url, 'payload': raw,
+    return mark_observation_freshness(item, now), {'location': location['id'], 'source': 'Météo-France', 'url': url, 'payload': raw,
                   'note': 'Original CSV rows for the selected nearby station and seven-day window'}
