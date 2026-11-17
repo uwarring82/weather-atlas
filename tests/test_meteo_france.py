@@ -12,6 +12,18 @@ import csv
 from datetime import timedelta
 
 class MeteoFranceTests(unittest.TestCase):
+    def test_nearby_official_inventory_contains_seven_nearest_stations(self):
+        base={'NOM_USUEL':'VOSGES','LAT':'48.0813','ALTI':'700','AAAAMMJJHH':'2026111704',
+              'T':'0','QT':'1','RR1':'2','QRR1':'9','FF':'5','QFF':'0','U':'80','QU':'1'}
+        raw=[{**base,'NUM_POSTE':str(88000000+i),'LON':str(6.9267+i*.001)} for i in reversed(range(10))]
+        rows,sources,archived,stations=normalize(raw,{'latitude':48.0813,'longitude':6.9267},datetime(2026,11,17,12,tzinfo=timezone.utc),include_nearby=True)
+        self.assertEqual(len(stations),7)
+        self.assertEqual([s['id'] for s in stations],[str(88000000+i) for i in range(7)])
+        self.assertEqual(len(archived),7)
+        self.assertEqual(stations[0]['distance'],0)
+        self.assertEqual(stations[0]['rows'][0]['humidity'],80)
+        self.assertTrue(all(s['official'] for s in stations))
+
     def test_selects_nearest_station_and_preserves_quality_gaps(self):
         row={'NUM_POSTE':'88001','NOM_USUEL':'VOSGES','LAT':'48.08','LON':'6.92','ALTI':'700','AAAAMMJJHH':'2026111704',
              'T':'0','QT':'1','RR1':'2','QRR1':'9','FF':'5','QFF':'0','U':'80','QU':'2'}
@@ -48,7 +60,7 @@ class MeteoFranceTests(unittest.TestCase):
         now=datetime(2026,11,17,12,tzinfo=timezone.utc)
         url='https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_88_latest-2025-2026.csv.gz'
         previous={'provider':'Météo-France','status':'ok','url':url,'fetched_at':'2026-11-17T11:00:00Z',
-                  'source_last_modified':'Sun, 15 Nov 2026 06:00:00 GMT','sources':[],
+                  'source_last_modified':'Sun, 15 Nov 2026 06:00:00 GMT','sources':[], 'nearby_stations':[],
                   'rows':[{'time':'2026-11-15T23:00:00Z','temperature':5,'wind':None,'humidity':None,'precipitation':0}]}
         with patch('meteo_france.urlopen',side_effect=HTTPError(url,304,'Not Modified',{},None)) as opener:
             item,raw=collect({'id':'test'},previous,now,'test')

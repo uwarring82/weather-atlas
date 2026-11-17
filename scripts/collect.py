@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from community import collect_community, community_fallback
 from meteo_france import collect as collect_meteo_france
 from freshness import mark_observation_freshness
+from stations import nearby_stations, export_csv
 
 ROOT = Path(__file__).resolve().parents[1]
 UTC = timezone.utc
@@ -159,10 +160,12 @@ def collect(output, now):
             print(f"WARNING {location['id']}: {message}", flush=True)
             loc['community'] = community_fallback(last.get('community', {}), now, message)
             community_failures.append(location['id'])
+        loc['nearby_stations'] = nearby_stations(loc, now)
         result["locations"].append(loc)
     if successes == 0:
         raise RuntimeError("All sources failed; keeping the previous published dataset")
     save(output, result)
+    export_csv(output.parent/'stations.csv', result)
     # Immutable per-collection raw snapshots. Keep 30 days in the current tree;
     # earlier committed snapshots remain in Git history.
     folder = output.parent / "archive"

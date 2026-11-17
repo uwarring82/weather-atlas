@@ -5,6 +5,9 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 
+MAX_STATIONS = 7
+SEARCH_RADIUS_M = 15000
+
 def timestamp(value):
     return datetime.fromisoformat(value.replace('Z', '+00:00'))
 
@@ -35,7 +38,7 @@ def sensemap(raw, location, now):
         if len(coords) < 2:
             continue
         meters = distance(location['latitude'], location['longitude'], coords[1], coords[0])
-        if meters > 15000:
+        if meters > SEARCH_RADIUS_M:
             continue
         temp = next((reading(s, now, -35, 55) for s in box.get('sensors', [])
                      if s.get('unit') == '°C' and s.get('title', '').lower() in {'temperatur', 'temperature', 'lufttemperatur', 'air temperature'}
@@ -48,9 +51,46 @@ def sensemap(raw, location, now):
         row = {'time': temp['time'], 'temperature': temp['value'], 'humidity': humidity['value'] if humidity else None,
                'humidity_time': humidity['time'] if humidity else None, 'wind': None, 'precipitation': None}
         stations.append({'id': box['_id'], 'name': box['name'], 'provider': 'openSenseMap', 'distance': meters,
+                         'latitude': coords[1], 'longitude': coords[0], 'distance_method': 'great-circle',
                          'url': 'https://opensensemap.org/explore/' + box['_id'], 'status': 'ok', 'fetched_at': iso(now),
                          'quality': 'Community sensor; range and freshness checks only', 'rows': [row]})
-    return sorted(stations, key=lambda s: s['distance'])[:3]
+    return sorted(stations, key=lambda s: s['distance'])[:MAX_STATIONS]
+
+def sensor_community(raw, location, now):
+    """Use public outdoor temperature monitors, one sensor per deployment."""
+    stations = {}
+    for record in raw:
+        try:
+            loc = record['location']
+            if loc.get('indoor') not in (0, False):
+                continue
+            lat, lon = float(loc['latitude']), float(loc['longitude'])
+            meters = distance(location['latitude'], location['longitude'], lat, lon)
+            measured = datetime.strptime(record['timestamp'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+            if meters > SEARCH_RADIUS_M or not now-timedelta(hours=2) <= measured <= now:
+                continue
+            values = {v['value_type']: v['value'] for v in record['sensordatavalues']}
+            temp = float(values['temperature'])
+            if not math.isfinite(temp) or not -35 <= temp <= 55:
+                continue
+            humidity = float(values['humidity']) if 'humidity' in values else None
+            if humidity is not None and (not math.isfinite(humidity) or not 0 <= humidity <= 100):
+                humidity = None
+            station_id = str(loc['id'])
+            row = {'time': iso(measured), 'temperature': temp, 'humidity': humidity,
+                   'humidity_time': iso(measured) if humidity is not None else None, 'wind': None, 'precipitation': None}
+            sensor = record['sensor']
+            station = {'id': station_id, 'name': 'Sensor.Community ' + station_id, 'provider': 'Sensor.Community',
+                'sensor_id': str(sensor['id']), 'sensor_type': sensor['sensor_type']['name'],
+                'latitude': lat, 'longitude': lon, 'distance': meters, 'distance_method': 'great-circle',
+                'coordinates_approximate': not bool(loc.get('exact_location')),
+                'url': f"https://data.sensor.community/airrohr/v1/sensor/{sensor['id']}/",
+                'status': 'ok', 'fetched_at': iso(now), 'quality': 'Outdoor community monitor; range and freshness checks only', 'rows': [row]}
+            if station_id not in stations or row['time'] > stations[station_id]['rows'][0]['time']:
+                stations[station_id] = station
+        except (KeyError, TypeError, ValueError):
+            continue
+    return sorted(stations.values(), key=lambda s: s['distance'])[:MAX_STATIONS]
 
 def wunderground(raw, location, now, errors=None, station_id=None):
     result = []
@@ -87,6 +127,7 @@ def wunderground(raw, location, now, errors=None, station_id=None):
                'wind': m.get('windSpeed'), 'wind_gust': m.get('windGust'), 'precipitation': None,
                'precipitation_today': m.get('precipTotal'), 'qc_status': r.get('qcStatus')}
         result.append({'id': r['stationID'], 'name': r.get('neighborhood') or r['stationID'], 'provider': 'Weather Underground',
+                       'latitude': r['lat'], 'longitude': r['lon'], 'distance_method': 'great-circle',
                        'distance': meters, 'url': 'https://www.wunderground.com/dashboard/pws/' + r['stationID'],
                        'status': 'ok', 'fetched_at': iso(now), 'quality': 'Personal weather station; provider QC ' + str(r.get('qcStatus')), 'rows': [row]})
     return result
@@ -135,6 +176,16 @@ def collect_community(location, previous, now, fetch):
     except Exception as e:
         errors.append('openSenseMap: ' + str(e))
         stations.extend({**s, 'status': 'stale'} for s in previous.get('stations', []) if s['provider'] == 'openSenseMap')
+    try:
+        raw, url = fetch(f"https://data.sensor.community/airrohr/v1/filter/area={location['latitude']},{location['longitude']},15", {})
+        selected = sensor_community(raw, location, now)
+        stations.extend(selected)
+        ids = {s['sensor_id'] for s in selected}
+        responses.append({'location': location['id'], 'source': 'Sensor.Community', 'url': url,
+                          'payload': [r for r in raw if str(r.get('sensor', {}).get('id')) in ids]})
+    except Exception as error:
+        errors.append('Sensor.Community: ' + str(error))
+        stations.extend({**s, 'status': 'stale'} for s in previous.get('stations', []) if s['provider'] == 'Sensor.Community')
     key = os.environ.get('WU_API_KEY')
     config, config_errors = parse_wu_stations(os.environ.get('WU_STATIONS'))
     errors.extend(config_errors)
@@ -146,7 +197,7 @@ def collect_community(location, previous, now, fetch):
     if key and requested:
         wu_status = 'ok'
         wu_errors = []
-        for station_id in requested[:3]:
+        for station_id in requested[:MAX_STATIONS]:
             try:
                 raw, _ = fetch('https://api.weather.com/v2/pws/observations/current', {'stationId': station_id,
                                'format': 'json', 'units': 'm', 'numericPrecision': 'decimal', 'apiKey': key})

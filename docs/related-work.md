@@ -31,3 +31,7 @@ For local microclimates, a calibrated sensor at each street would provide strong
 ## French station coverage
 
 Xonrupt-Longemer uses the official [Météo-France hourly climate dataset](https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires). Metropolitan timestamps are UTC and current two-year files are published daily. The nearest usable station in Vosges department 88 is Gérardmer, about 7 km from the configured village centre. These are delayed observations, distinct from live model forecasts. Wind and humidity are unavailable at that station and remain blank.
+
+## Expanded nearby monitors
+
+The monitor inventory combines official stations with [Sensor.Community](https://sensor.community/en/) and openSenseMap. Up to seven reporting stations per configured place are ordered by their straight-line distance from that place. Sensor.Community adds closer temperature/humidity monitors around both German locations; nearby Météo-France stations provide the French coverage and expose wind or humidity where individual stations measure them. Each series keeps its own station identity and timestamp.

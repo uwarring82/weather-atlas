@@ -1,6 +1,8 @@
 'use strict';
 const $ = (selector) => document.querySelector(selector);
 const COLORS = ['#34654d', '#c46a40', '#577ea5', '#917398'];
+const MONITOR_COLORS = ['#c46a40','#577ea5','#917398','#a4862d','#378a8b','#ad5975','#6554a4'];
+const MAX_STATIONS = 7;
 const METRICS = {temperature: {label:'Temperature', unit:'°C'}, precipitation: {label:'Precipitation',unit:'mm'}, wind: {label:'Wind speed',unit:'km/h'}, humidity: {label:'Relative humidity',unit:'%'}};
 const state = {data:null, location:'hasslinghausen', mode:'forecast', metric:'temperature', hours:48};
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -25,17 +27,21 @@ const age = (timestamp) => {
 function latestObservation(location) {
   return [...location.observations.rows].reverse().find(r => valid(r.temperature) && Date.parse(r.time)<=Date.now());
 }
-function reportingCommunity(location){
-  return [...(location.community?.stations||[])].filter(s=>{
+function reportingStations(location){
+  return [...(location.nearby_stations||location.community?.stations||[])].filter(s=>{
     const row=s.rows.at(-1),time=Date.parse(row?.time);
-    return s.status==='ok'&&valid(row?.temperature)&&time<=Date.now()&&Date.now()-time<=2*3600000;
-  }).sort((a,b)=>a.distance-b.distance).slice(0,3);
+    return s.status==='ok'&&valid(row?.temperature)&&time<=Date.now()&&Date.now()-time<=(s.observation_stale_after_hours||2)*3600000;
+  }).sort((a,b)=>a.distance-b.distance).slice(0,MAX_STATIONS);
 }
-function communitySeries(location,metric,now){
-  return (location.community?.stations||[]).map(s=>({...s,rows:s.rows.filter(r=>Date.parse(r.time)>=now-7*86400000&&Date.parse(r.time)<=now)}))
-    .filter(s=>s.rows.some(r=>valid(r[metric]))).sort((a,b)=>a.distance-b.distance).slice(0,3)
-    .map((s,i)=>({...s,label:`${s.name} · ${s.status==='stale'?'recently seen':'community'}`,color:COLORS[i+1]}));
+function monitorSeries(location,metric,now){
+  const primaryIds=new Set(location.observations.sources.map(s=>String(s.station_id||s.dwd_station_id||s.id)));
+  const candidates=[...(location.nearby_stations||[]),...(location.observations.nearby_stations||[]),...(location.community?.stations||[])];
+  const unique=[...new Map(candidates.filter(s=>!(s.official&&primaryIds.has(String(s.id)))).map(s=>[s.provider+':'+s.id,s])).values()];
+  return unique.map(s=>({...s,rows:s.rows.filter(r=>Date.parse(r.time)>=now-7*86400000&&Date.parse(r.time)<=now)}))
+    .filter(s=>s.rows.some(r=>valid(r[metric]))).sort((a,b)=>a.distance-b.distance).slice(0,MAX_STATIONS)
+    .map((s,i)=>({...s,label:`${s.name} · ${s.status==='stale'?'recently seen':s.provider}`,color:MONITOR_COLORS[i]}));
 }
+
 function renderLocations() {
   $('#locations').innerHTML = state.data.locations.map((l,i) => {
     const r = latestObservation(l);
@@ -49,7 +55,7 @@ function renderLocations() {
 }
 function seriesFor(location) {
   const now = Date.now();
-  if (state.mode === 'observations') return [{id:'dwd',label:(location.observations.provider||'Official station')+' observations',color:COLORS[0],rows:location.observations.rows.filter(r=>Date.parse(r.time)>=now-7*86400000 && Date.parse(r.time)<=now)},...communitySeries(location,state.metric,now)];
+  if (state.mode === 'observations') return [{id:'dwd',label:(location.observations.provider||'Official station')+' observations',color:COLORS[0],rows:location.observations.rows.filter(r=>Date.parse(r.time)>=now-7*86400000 && Date.parse(r.time)<=now)},...monitorSeries(location,state.metric,now)];
   return location.forecasts.map((f,i)=>({...f,label:f.label+(old(f)?' · delayed':''), color:COLORS[i],rows:f.rows.filter(r=>Date.parse(r.time)>=now && Date.parse(r.time)<=now+state.hours*3600000)}));
 }
 function renderChart(location) {
@@ -59,7 +65,7 @@ function renderChart(location) {
   $('#horizon').hidden = state.mode !== 'forecast';
   $('#legend').innerHTML = series.map(s=>`<span class="legend-item"><i style="background:${s.color}"></i>${escapeHTML(s.label)}</span>`).join('');
   $('#chart-summary').textContent = `${spec.label} (${spec.unit}) · ${state.mode==='forecast'?`next ${state.hours===48?'48 hours':'7 days'}`:'last 7 days'} · all times Europe/Berlin`;
-  $('#chart-note').textContent = state.mode==='observations' ? 'Official observations plus up to three nearest community stations with values for this metric in the last seven days. Recently seen stations may no longer be reporting. Full retained history is in the data download. Lines break at missing readings. Precipitation is the total for the hour ending at the indicated time.' : 'Forecast samples at each service’s available resolution. Hover over points for values, or inspect the table. Precipitation is the total for the preceding hour; MET Norway’s longer accumulation periods are left blank. Missing values stay blank; lines connect native forecast samples.';
+  $('#chart-note').textContent = state.mode==='observations' ? 'Primary official observations plus up to seven nearby monitors with values for this metric in the last seven days. Recently seen stations may no longer be reporting. Full retained history is in the data download. Lines break at missing readings. Precipitation is the total for the hour ending at the indicated time.' : 'Forecast samples at each service’s available resolution. Hover over points for values, or inspect the table. Precipitation is the total for the preceding hour; MET Norway’s longer accumulation periods are left blank. Missing values stay blank; lines connect native forecast samples.';
   if (!values.length) {
     $('#chart').innerHTML = '<p class="empty">No values available for this metric and time range.</p>';
     $('#table').innerHTML = '<p>No hourly values available.</p>';
@@ -117,12 +123,12 @@ function render(){
 }
 function renderCommunity(location){
   const community=location.community||{stations:[]};
-  const reporting=reportingCommunity(location);
+  const reporting=reportingStations(location);
   $('#community').innerHTML=reporting.length?reporting.map(s=>{
-    const row=s.rows.at(-1),delayed=s.status!=='ok'||Date.now()-Date.parse(row.time)>2*3600000;
-    return `<article class="community-card"><div class="community-heading"><a href="${escapeHTML(s.url)}">${escapeHTML(s.name)} ↗</a><span class="status">${delayed?'delayed':'reporting'}</span></div><p class="fineprint">${escapeHTML(s.provider)} · ${value(s.distance/1000)} km away</p><div class="community-temp">${value(row.temperature)}<small> °C</small></div><p class="fineprint">Humidity ${value(row.humidity,0)}%${row.humidity_time?` · ${escapeHTML(hour(row.humidity_time))}`:''}${valid(row.wind)?`<br>Wind ${value(row.wind)} km/h · gusts ${value(row.wind_gust)} km/h`:''}<br>Measured ${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}</p><span class="fineprint">${escapeHTML(s.quality)}</span></article>`;
-  }).join(''):'<p class="fineprint">No recent outdoor community readings found within 15 km. Official observations remain available above.</p>';
-  $('#community-note').textContent='Showing up to three nearest stations currently reporting. Community readings depend on sensor placement and maintenance. Outdoor openSenseMap temperatures must be within −35 to 55 °C and less than two hours old. All selected stations retain seven days of history in the download, including those no longer reporting. '+(community.wunderground_status==='not_configured'?'Weather Underground is not connected.':community.wunderground_status==='configuration_error'?'Weather Underground configuration needs correction.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':community.wunderground_status==='partial'?'Some Weather Underground stations are unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' '+community.errors.join(' · '):'');
+    const row=s.rows.at(-1);
+    return `<article class="community-card"><div class="community-heading"><a href="${escapeHTML(s.url)}">${escapeHTML(s.name)} ↗</a><span class="status">${s.provider==='Météo-France'?'daily':s.official?'official':'reporting'}</span></div><p class="fineprint">${escapeHTML(s.provider)} · ${value(s.distance/1000)} km · straight line</p><div class="community-temp">${value(row.temperature)}<small> °C</small></div><p class="fineprint">${valid(row.humidity)?`Humidity ${value(row.humidity,0)}%`:'Humidity not reported'}${row.humidity_time?` · ${escapeHTML(hour(row.humidity_time))}`:''}${valid(row.wind)?`<br>Wind ${value(row.wind)} km/h${valid(row.wind_gust)?` · gusts ${value(row.wind_gust)} km/h`:''}`:''}<br>Measured ${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}</p><span class="fineprint">${escapeHTML(s.quality)}</span></article>`;
+  }).join(''):'<p class="fineprint">No recent nearby monitor readings are available. Check the official observations above.</p>';
+  $('#community-note').textContent='Showing up to seven nearest reporting monitors, with straight-line distances from the selected street or village centre. Community sensors are searched within 15 km; official French stations within 50 km. Community readings must be less than two hours old; daily French observations may be up to 36 hours old. Coordinates can be approximate. Full retained history and a station-distance CSV are available to download. '+(community.wunderground_status==='not_configured'?'Weather Underground is not connected.':community.wunderground_status==='configuration_error'?'Weather Underground configuration needs correction.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':community.wunderground_status==='partial'?'Some Weather Underground stations are unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' '+community.errors.join(' · '):'');
 }
 $('#locations').addEventListener('click',event=>{const b=event.target.closest('[data-location]');if(b){state.location=b.dataset.location;render();}});
 $('#mode-controls').addEventListener('click',event=>{const b=event.target.closest('[data-mode]');if(b){state.mode=b.dataset.mode;for(const x of $('#mode-controls').querySelectorAll('button'))x.setAttribute('aria-pressed',x===b);render();}});

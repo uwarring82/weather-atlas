@@ -5,6 +5,7 @@ import json
 import math
 from pathlib import Path
 from freshness import latest_observation_time, observation_limit_hours
+from community import distance
 
 ROOT = Path(__file__).resolve().parents[1]
 FIELDS = ('temperature', 'precipitation', 'wind', 'humidity')
@@ -61,6 +62,17 @@ def validate(data, locations, now=None, max_age_hours=None):
             for row in station['rows']:
                 assert collected-timedelta(days=7) <= stamp(row['time']) <= collected
         assert len(keys) == len(set(keys)), 'Duplicate community station identities'
+        nearby = location['nearby_stations']
+        assert len(nearby) <= 7
+        assert [s['distance'] for s in nearby] == sorted(s['distance'] for s in nearby)
+        identities = []
+        for station in nearby:
+            identities.append((station['provider'], station['id']))
+            assert 0 <= station['distance'] <= 50000
+            assert station['distance_method'] == 'great-circle'
+            assert abs(station['distance']-distance(location['latitude'], location['longitude'], station['latitude'], station['longitude'])) <= 1
+            validate_rows(station['rows'])
+        assert len(identities) == len(set(identities)), 'Duplicate nearby station identities'
     return True
 
 if __name__ == '__main__':

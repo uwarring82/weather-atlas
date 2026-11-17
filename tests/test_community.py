@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from community import sensemap, wunderground, collect_community, retain_history
+from community import sensemap, wunderground, collect_community, retain_history, sensor_community
 from datetime import timedelta
 
 class CommunityTests(unittest.TestCase):
@@ -19,6 +19,19 @@ class CommunityTests(unittest.TestCase):
         stations=sensemap([self.box('-40'),self.box(exposure='indoor'),self.box(time='2025-01-01T00:00:00Z'),self.box('0')],self.location,self.now)
         self.assertEqual(len(stations),1)
         self.assertEqual(stations[0]['rows'][0]['temperature'],0)
+
+    def test_sensor_community_selects_seven_nearest_outdoor_deployments(self):
+        def record(i,indoor=0):
+            return {'timestamp':'2026-11-17 11:50:00','location':{'id':i,'indoor':indoor,'latitude':51.33,'longitude':7.28+i*.001,'exact_location':0},
+                    'sensor':{'id':i+100,'sensor_type':{'name':'BME280'}},
+                    'sensordatavalues':[{'value_type':'temperature','value':'0'},{'value_type':'humidity','value':'80'}]}
+        raw=[record(i) for i in reversed(range(10))]+[record(0,indoor=1),record(0)]
+        stations=sensor_community(raw,self.location,self.now)
+        self.assertEqual([s['id'] for s in stations],[str(i) for i in range(7)])
+        self.assertEqual(stations[0]['rows'][0]['temperature'],0)
+        self.assertEqual(stations[0]['distance'],0)
+        self.assertTrue(stations[0]['coordinates_approximate'])
+        self.assertEqual(stations[0]['rows'][0]['time'],'2026-11-17T11:50:00Z')
 
     def test_wu_daily_rain_is_not_hourly_rain(self):
         raw={'observations':[{'stationID':'TEST','obsTimeUtc':'2026-11-17T11:50:00Z','lat':51.33,'lon':7.28,'qcStatus':1,'humidity':80,'metric':{'temp':8,'windSpeed':10,'windGust':20,'precipTotal':12}}]}
