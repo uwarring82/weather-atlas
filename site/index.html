@@ -4,27 +4,36 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f5ee">
-  <meta name="description" content="Recent weather observations and multi-provider forecasts for Haßlinghausen and Freiburg. An open, hourly weather archive.">
+  <meta name="description" content="Interactive station maps, recent weather observations and multi-provider forecasts for Haßlinghausen, Freiburg and Xonrupt-Longemer.">
   <title>Weather Atlas · Haßlinghausen, Freiburg & Xonrupt-Longemer</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
+  <script src="vendor/leaflet/leaflet.js" defer></script>
+  <script src="map.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
   <header class="masthead wrap">
     <a class="brand" href="./" aria-label="Weather Atlas home"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12"/><path d="M4 16h24M16 4c-9 8-9 16 0 24M16 4c9 8 9 16 0 24"/></svg> WEATHER <strong>ATLAS</strong></a>
-    <nav aria-label="Main"><a href="#explore">Explore</a><a href="#sources">Sources</a><a href="https://github.com/uwarring82/weather-atlas">GitHub <span aria-hidden="true">↗</span></a></nav>
+    <nav aria-label="Main"><a href="#station-network">Station map</a><a href="#explore">Forecast</a><a href="#sources">Sources</a><a href="https://github.com/uwarring82/weather-atlas">GitHub <span aria-hidden="true">↗</span></a></nav>
   </header>
   <main class="wrap">
     <section class="intro">
-      <div><p class="eyebrow">A LOCAL WEATHER OBSERVATORY</p><h1>Three places.<br><em>A wider perspective.</em></h1><p class="lede">The weather that happened. The weather ahead.<br>Local observations, with four forecasts side by side.</p></div>
-      <div class="atlas-map" aria-label="Schematic locations in Germany and France">
-        <svg viewBox="0 0 300 230" role="img"><title>Haßlinghausen, Freiburg and Xonrupt-Longemer, schematic map</title><defs><pattern id="dots" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".65" fill="#bfc7b7"/></pattern></defs><rect width="300" height="230" fill="url(#dots)"/><path class="route" d="M130 45L210 178L75 175Z"/><circle cx="130" cy="45" r="5"/><circle cx="210" cy="178" r="5"/><circle cx="75" cy="175" r="5"/><text x="142" y="40">Haßlinghausen</text><text x="221" y="181">Freiburg</text><text x="16" y="197">Xonrupt-Longemer</text><text class="map-note" x="16" y="225">DE + FR · THREE LOCAL PERSPECTIVES</text></svg>
-      </div>
+      <div><p class="eyebrow">A LOCAL WEATHER OBSERVATORY</p><h1>Three places.<br><em>A wider perspective.</em></h1><p class="lede">The weather that happened. The weather ahead.<br>See the stations around you, then explore four forecasts side by side.</p></div>
+      <div class="hero-graphic" aria-hidden="true"><svg viewBox="0 0 320 230"><defs><pattern id="contour" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M-12 24Q12 0 36 24T84 24M-12 36Q12 12 36 36T84 36" fill="none" stroke="#d3deca" stroke-width=".7"/></pattern></defs><rect width="320" height="230" rx="100" fill="url(#contour)"/><circle cx="176" cy="100" r="59" fill="#e8eddc"/><circle cx="176" cy="100" r="30" fill="#e5b275"/><g stroke="#bd783f" stroke-width="2" stroke-linecap="round"><path d="M176 54v-9M176 155v-9M130 100h-9M231 100h-9M143 67l-6-6M215 139l-6-6M143 133l-6 6M215 61l-6 6"/></g><path d="M116 152h92a22 22 0 0 0 0-44 31 31 0 0 0-60-7 26 26 0 0 0-32 51Z" fill="#fcfcf6" stroke="#c8d5c1" stroke-width="1.5"/><path d="M137 170l-5 12M166 174l-5 12M195 170l-5 12" stroke="#729d9f" stroke-width="3" stroke-linecap="round"/><circle cx="73" cy="160" r="24" fill="#294f3c"/><path d="M73 150v20M63 160h20" stroke="#f5f5ee" stroke-width="1.5"/><path d="M71 185Q145 218 245 165" fill="none" stroke="#829e75" stroke-dasharray="3 5"/><circle cx="250" cy="162" r="7" fill="#c57849" stroke="#f5f5ee" stroke-width="3"/></svg><span id="hero-network">Three places · one open weather record</span></div>
     </section>
     <div class="collection-bar"><span id="collection-status" role="status"><i class="dot"></i> Loading weather archive…</span><span>Europe/Berlin · °C · mm · km/h</span></div>
     <div id="error" class="error" role="alert" hidden></div>
     <section id="locations" class="location-grid" aria-label="Choose a location"></section>
+    <section class="map-section panel" id="station-network" aria-labelledby="network-title">
+      <div class="section-top map-section-top"><div><p class="eyebrow">PUTTING THE READINGS ON THE MAP</p><h2 id="network-title">Your local station network</h2></div><div class="map-tools"><button type="button" id="map-fit">Fit local network</button><button type="button" id="map-overview" aria-pressed="false">All three places</button><button type="button" id="map-lines" aria-pressed="true">Distance lines</button></div></div>
+      <div class="map-layout"><div class="map-canvas-wrap"><div id="station-map" class="station-map" tabindex="0" role="region" aria-label="Interactive OpenStreetMap of weather monitoring stations"></div><p id="map-status" class="map-status" role="status">Loading station map…</p></div><aside class="map-sidebar" aria-label="Station information"><div id="map-station-detail" class="map-station-detail"></div><div class="map-list-heading"><span id="map-list-label">Nearby monitors</span><span>km / °C</span></div><div id="map-station-list" class="map-station-list"></div></aside></div>
+      <div class="map-foot"><div class="map-key"><span><i class="key-place"></i>Selected place</span><span><i class="key-official"></i>Official station</span><span><i class="key-community"></i>Community monitor</span><span><i class="key-distance"></i>Straight-line distance</span></div><a href="data/stations.csv" class="text-link" download="weather-atlas-stations.csv">Station coordinates & distances ↓</a></div>
+      <p class="fineprint map-note">Select a numbered marker or a station in the list. Published coordinates can be approximate. Use + / − to zoom; drag or use the arrow keys to pan. <a href="https://www.openstreetmap.org/fixthemap">Report a map issue ↗</a></p>
+    </section>
+    <section id="weather-snapshot" class="weather-snapshot" aria-label="Latest station measurements"></section>
+    <section class="outlook-section" aria-labelledby="outlook-title"><div class="section-top"><div><p class="eyebrow">AT SIX HOUR INTERVALS</p><h2 id="outlook-title">How the forecasts compare</h2></div><p class="fineprint">Ranges across available forecasts · not a confidence interval</p></div><div id="forecast-strip" class="forecast-strip"></div><p class="fineprint">Each tile shows the available forecast range for temperature and precipitation during the hour ending at that time. Missing forecasts are excluded.</p></section>
     <section class="explorer panel" id="explore" aria-labelledby="explore-title">
       <div class="section-top"><div><p class="eyebrow">EXPLORE THE RECORD</p><h2 id="explore-title">Weather at a glance</h2></div><div class="segmented" id="mode-controls" aria-label="Data view"><button type="button" data-mode="forecast" aria-pressed="true">Forecast</button><button type="button" data-mode="observations" aria-pressed="false">Recent observations</button></div></div>
       <div class="chart-controls"><div class="metrics" id="metric-controls" aria-label="Weather metric"><button type="button" data-metric="temperature" aria-pressed="true">Temperature</button><button type="button" data-metric="precipitation" aria-pressed="false">Precipitation</button><button type="button" data-metric="wind" aria-pressed="false">Wind</button><button type="button" data-metric="humidity" aria-pressed="false">Humidity</button></div><select id="horizon" aria-label="Forecast time range"><option value="48">Next 48 hours</option><option value="168">Next 7 days</option></select></div>

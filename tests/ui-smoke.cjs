@@ -16,6 +16,8 @@ setImmediate(()=>{
     assert.doesNotMatch(element('#chart').innerHTML,/NaN|undefined/);
     assert.match(element('#table').innerHTML,available?/<table/:/No hourly values available/);
     assert.match(element('#providers').innerHTML,/DWD ICON/);
+    assert.equal((element('#weather-snapshot').innerHTML.match(/snapshot-card/g)||[]).length,4);
+    assert.equal((element('#forecast-strip').innerHTML.match(/class="outlook-card"/g)||[]).length,8);
     assert.match(element('#community').innerHTML,/openSenseMap|Sensor.Community|Météo-France|DWD|No recent/);count++;
   }
   console.log(`Rendering smoke check passed for ${count} location/view/metric/horizon combinations.`);

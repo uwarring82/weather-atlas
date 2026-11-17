@@ -3,6 +3,8 @@ const $ = (selector) => document.querySelector(selector);
 const COLORS = ['#34654d', '#c46a40', '#577ea5', '#917398'];
 const MONITOR_COLORS = ['#c46a40','#577ea5','#917398','#a4862d','#378a8b','#ad5975','#6554a4'];
 const MAX_STATIONS = 7;
+const ICONS={temperature:'<path d="M10 14.8V5a2 2 0 0 1 4 0v9.8a4 4 0 1 1-4 0Z"/><path d="M12 10v8M16 6h3M16 10h2"/>',humidity:'<path d="M12 3S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12-7-12Z"/><path d="m9 17 6-6M9 11h.01M15 17h.01"/>',wind:'<path d="M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h6a3 3 0 1 1-3 3"/>',precipitation:'<path d="M7 14H6a4 4 0 0 1 0-8 6 6 0 0 1 11-1 4.5 4.5 0 0 1 1 9h-1M8 17l-1 3M12 16l-1 3M16 17l-1 3"/>'};
+const glyph=metric=>`<svg class="metric-glyph" viewBox="0 0 24 24" aria-hidden="true">${ICONS[metric]}</svg>`;
 const METRICS = {temperature: {label:'Temperature', unit:'°C'}, precipitation: {label:'Precipitation',unit:'mm'}, wind: {label:'Wind speed',unit:'km/h'}, humidity: {label:'Relative humidity',unit:'%'}};
 const state = {data:null, location:'hasslinghausen', mode:'forecast', metric:'temperature', hours:48};
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,6 +29,33 @@ const age = (timestamp) => {
 function latestObservation(location) {
   return [...location.observations.rows].reverse().find(r => valid(r.temperature) && Date.parse(r.time)<=Date.now());
 }
+function temperatureTrace(location){
+  const end=Date.now(),start=end-24*3600000,rows=location.observations.rows.filter(r=>Date.parse(r.time)>=start&&Date.parse(r.time)<=end&&valid(r.temperature));
+  if(!rows.length)return '';
+  const min=Math.min(...rows.map(r=>r.temperature)),max=Math.max(...rows.map(r=>r.temperature)),range=Math.max(1,max-min);
+  let path='',previous=null;
+  for(const row of rows){const t=Date.parse(row.time),x=2+(t-start)/(end-start)*296,y=35-(row.temperature-min)/range*30;path+=`${previous===null||t-previous>1.5*3600000?'M':'L'}${x.toFixed(1)},${y.toFixed(1)} `;previous=t;}
+  return `<svg class="card-spark" viewBox="0 0 300 40" role="img" aria-label="Observed temperature over the last 24 hours"><path d="${path}"/></svg><span class="spark-caption"><span>LAST 24H · STATION RECORD</span><span>${value(min)}–${value(max)}°</span></span>`;
+}
+function renderSnapshot(location){
+  const row=latestObservation(location),specs=[['temperature','Station temperature','°C'],['precipitation','Last-hour precipitation','mm'],['wind','Wind at the station','km/h'],['humidity','Relative humidity','%']];
+  $('#weather-snapshot').innerHTML=specs.map(([metric,label,unit])=>{
+    const v=row?.[metric],meter=metric==='humidity'&&valid(v)?`<div class="metric-meter"><span style="width:${Math.max(0,Math.min(100,v))}%"></span></div>`:'';
+    return `<article class="snapshot-card"><div class="snapshot-top"><span>${label}</span>${glyph(metric)}</div><div class="snapshot-value">${value(v)} <small>${unit}</small></div><p class="snapshot-note">${valid(v)&&row?`${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}`:'Not reported by this station'}<br>${escapeHTML(location.observations.provider||'Official station')}${location.observations.provider==='Météo-France'?' · published daily':''}</p>${meter}</article>`;
+  }).join('');
+}
+function renderOutlook(location){
+  const start=Math.ceil(Date.now()/3600000)*3600000,cards=[];
+  for(let i=0;i<8;i++){
+    const t=start+i*6*3600000;
+    const samples=location.forecasts.map(f=>f.rows.find(r=>Date.parse(r.time)===t)).filter(Boolean);
+    const temps=samples.map(r=>r.temperature).filter(valid),rain=samples.map(r=>r.precipitation).filter(valid);
+    cards.push({t,min:temps.length?Math.min(...temps):null,max:temps.length?Math.max(...temps):null,rainMin:rain.length?Math.min(...rain):null,rainMax:rain.length?Math.max(...rain):null,count:temps.length});
+  }
+  const all=cards.flatMap(c=>[c.min,c.max]).filter(valid),lo=all.length?Math.min(...all)-1:0,hi=all.length?Math.max(...all)+1:1;
+  const range=(a,b,unit)=>valid(a)?`${value(a)}${a!==b?'–'+value(b):''}${unit}`:'—';
+  $('#forecast-strip').innerHTML=cards.map(c=>`<article class="outlook-card"><p class="outlook-date">${escapeHTML(date(c.t,{hour:undefined,minute:undefined}))}</p><h3>${escapeHTML(hour(c.t))}</h3>${glyph('temperature')}<p class="outlook-temp">${range(c.min,c.max,'°')}</p><div class="outlook-range">${valid(c.min)?`<span style="left:${(c.min-lo)/(hi-lo)*100}%;width:${Math.max(3,(c.max-c.min)/(hi-lo)*100)}%"></span>`:''}</div><p class="outlook-rain" title="Precipitation during the preceding hour">${glyph('precipitation')}${range(c.rainMin,c.rainMax,' mm')}</p><p class="outlook-sources">${c.count} forecasts</p></article>`).join('');
+}
 function reportingStations(location){
   return [...(location.nearby_stations||location.community?.stations||[])].filter(s=>{
     const row=s.rows.at(-1),time=Date.parse(row?.time);
@@ -46,7 +75,7 @@ function renderLocations() {
   $('#locations').innerHTML = state.data.locations.map((l,i) => {
     const r = latestObservation(l);
     const details=[valid(r?.wind)?`${value(r.wind,0)} km/h wind`:null,valid(r?.humidity)?`${value(r.humidity,0)}% humidity`:null].filter(Boolean).join(' · ')||'Wind and humidity not reported';
-    return `<button class="location-card" type="button" data-location="${l.id}" aria-pressed="${l.id===state.location}"><span class="number">0${i+1} / ${escapeHTML(l.region)}</span><span class="selected-marker">${l.id===state.location?'● SELECTED':'↗ EXPLORE'}</span><h2>${escapeHTML(l.name)}</h2><span class="street">${escapeHTML(l.street)}</span><div class="card-weather"><div class="temperature">${value(r?.temperature)}<small> °C</small></div><div class="card-meta">${escapeHTML(l.observations.provider||'Official station')} observation<br>${r?escapeHTML(date(r.time)):'No observations available'}<br>${r?`${old(l.observations)?'Delayed · ':''}${escapeHTML(age(r.time))}${l.observations.provider==='Météo-France'?' · published daily':''}`:''}<br>${r?details:'Check source status'}</div></div></button>`;
+    return `<button class="location-card" type="button" data-location="${l.id}" aria-pressed="${l.id===state.location}"><span class="number">0${i+1} / ${escapeHTML(l.region)}</span><span class="selected-marker">${l.id===state.location?'● SELECTED':'↗ EXPLORE'}</span><h2>${escapeHTML(l.name)}</h2><span class="street">${escapeHTML(l.street)}</span><div class="card-weather"><div class="temperature">${value(r?.temperature)}<small> °C</small></div><div class="card-meta">${escapeHTML(l.observations.provider||'Official station')} observation<br>${r?escapeHTML(date(r.time)):'No observations available'}<br>${r?`${old(l.observations)?'Delayed · ':''}${escapeHTML(age(r.time))}${l.observations.provider==='Météo-France'?' · published daily':''}`:''}<br>${r?details:'Check source status'}</div></div>${temperatureTrace(l)}</button>`;
   }).join('');
   const degraded = state.data.locations.some(l => old(l.observations) || l.forecasts.some(old));
   $('#collection-status').innerHTML = `<i class="dot ${degraded?'warn':''}"></i>${degraded?'Some sources delayed · ':''}Collected ${escapeHTML(date(state.data.collected_at))} CET`;
@@ -119,14 +148,16 @@ function renderSources(location){
   $('#map-link').href=`https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}`;
 }
 function render(){
-  renderLocations();const location=state.data.locations.find(l=>l.id===state.location);renderChart(location);renderSources(location);renderCommunity(location);
+  renderLocations();const location=state.data.locations.find(l=>l.id===state.location);renderChart(location);renderSources(location);renderCommunity(location);renderSnapshot(location);renderOutlook(location);
+  $('#hero-network').textContent=`${state.data.locations.length} places · ${state.data.locations.reduce((n,l)=>n+reportingStations(l).length,0)} monitoring stations · 4 forecasts`;
+  globalThis.WeatherAtlasMap?.render(state.data,state.location,{getStations:reportingStations,onLocationSelect:id=>{state.location=id;render();}});
 }
 function renderCommunity(location){
   const community=location.community||{stations:[]};
   const reporting=reportingStations(location);
   $('#community').innerHTML=reporting.length?reporting.map(s=>{
     const row=s.rows.at(-1);
-    return `<article class="community-card"><div class="community-heading"><a href="${escapeHTML(s.url)}">${escapeHTML(s.name)} ↗</a><span class="status">${s.provider==='Météo-France'?'daily':s.official?'official':'reporting'}</span></div><p class="fineprint">${escapeHTML(s.provider)} · ${value(s.distance/1000)} km · straight line</p><div class="community-temp">${value(row.temperature)}<small> °C</small></div><p class="fineprint">${valid(row.humidity)?`Humidity ${value(row.humidity,0)}%`:'Humidity not reported'}${row.humidity_time?` · ${escapeHTML(hour(row.humidity_time))}`:''}${valid(row.wind)?`<br>Wind ${value(row.wind)} km/h${valid(row.wind_gust)?` · gusts ${value(row.wind_gust)} km/h`:''}`:''}<br>Measured ${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}</p><span class="fineprint">${escapeHTML(s.quality)}</span></article>`;
+    return `<article class="community-card"><div class="community-heading"><a href="${escapeHTML(s.url)}">${escapeHTML(s.name)} ↗</a><span class="status">${s.provider==='Météo-France'?'daily':s.official?'official':'reporting'}</span></div><p class="fineprint">${escapeHTML(s.provider)} · ${value(s.distance/1000)} km · straight line</p><div class="community-temp">${value(row.temperature)}<small> °C</small></div><p class="fineprint">${valid(row.humidity)?`Humidity ${value(row.humidity,0)}%`:'Humidity not reported'}${row.humidity_time?` · ${escapeHTML(hour(row.humidity_time))}`:''}${valid(row.wind)?`<br>Wind ${value(row.wind)} km/h${valid(row.wind_gust)?` · gusts ${value(row.wind_gust)} km/h`:''}`:''}<br>Measured ${escapeHTML(date(row.time))} · ${escapeHTML(age(row.time))}</p><span class="fineprint">${escapeHTML(s.quality)}</span><button class="locate-monitor" type="button" data-map-key="${escapeHTML(s.provider+':'+s.id)}">Locate on the map ↗</button></article>`;
   }).join(''):'<p class="fineprint">No recent nearby monitor readings are available. Check the official observations above.</p>';
   $('#community-note').textContent='Showing up to seven nearest reporting monitors, with straight-line distances from the selected street or village centre. Community sensors are searched within 15 km; official French stations within 50 km. Community readings must be less than two hours old; daily French observations may be up to 36 hours old. Coordinates can be approximate. Full retained history and a station-distance CSV are available to download. '+(community.wunderground_status==='not_configured'?'Weather Underground is not connected.':community.wunderground_status==='configuration_error'?'Weather Underground configuration needs correction.':community.wunderground_status==='unavailable'?'Weather Underground is currently unavailable.':community.wunderground_status==='partial'?'Some Weather Underground stations are unavailable.':'Weather Underground PWS readings are included where configured.')+(community.errors?.length?' '+community.errors.join(' · '):'');
 }
@@ -135,3 +166,5 @@ $('#mode-controls').addEventListener('click',event=>{const b=event.target.closes
 $('#metric-controls').addEventListener('click',event=>{const b=event.target.closest('[data-metric]');if(b){state.metric=b.dataset.metric;for(const x of $('#metric-controls').querySelectorAll('button'))x.setAttribute('aria-pressed',x===b);render();}});
 $('#horizon').addEventListener('change',event=>{state.hours=Number(event.target.value);render();});
 fetch('data/latest.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).then(data=>{state.data=data;render();}).catch(error=>{$('#collection-status').textContent='Weather data unavailable';$('#error').hidden=false;$('#error').textContent=`The weather archive could not be loaded (${error.message}). Please reload, or check the repository’s collection workflow.`;});
+
+$('#community').addEventListener('click',event=>{const button=event.target.closest('[data-map-key]');if(button){globalThis.WeatherAtlasMap?.focusStation(button.dataset.mapKey);$('#station-network').scrollIntoView?.({behavior:'smooth',block:'start'});}});
