@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "collected_at": "2026-11-17T10:33:53Z",
+  "collected_at": "2026-11-17T10:35:29Z",
   "timezone": "Europe/Berlin",
   "units": {
     "temperature": "°C",
@@ -21,7 +21,7 @@
         {
           "id": "dwd_icon",
           "label": "DWD ICON",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=51.3313&longitude=7.2843&models=dwd_icon&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -1212,7 +1212,7 @@
         {
           "id": "ecmwf_ifs025",
           "label": "ECMWF IFS",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=51.3313&longitude=7.2843&models=ecmwf_ifs025&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -2403,7 +2403,7 @@
         {
           "id": "gfs_seamless",
           "label": "NOAA GFS",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=51.3313&longitude=7.2843&models=gfs_seamless&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -3594,7 +3594,7 @@
         {
           "id": "met_no",
           "label": "MET Norway",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=51.3313&lon=7.2843",
           "rows": [
@@ -4230,8 +4230,8 @@
       "observations": {
         "provider": "DWD via Bright Sky",
         "status": "ok",
-        "fetched_at": "2026-11-17T10:33:53Z",
-        "url": "https://api.brightsky.dev/weather?lat=51.3313&lon=7.2843&date=2026-11-10T10%3A33%3A53Z&last_date=2026-11-17T10%3A33%3A53Z&tz=UTC&units=dwd&max_dist=50000",
+        "fetched_at": "2026-11-17T10:35:29Z",
+        "url": "https://api.brightsky.dev/weather?lat=51.3313&lon=7.2843&date=2026-11-10T10%3A35%3A29Z&last_date=2026-11-17T10%3A35%3A29Z&tz=UTC&units=dwd&max_dist=50000",
         "rows": [
           {
             "time": "2026-11-10T11:00:00Z",
@@ -5608,7 +5608,7 @@
             "distance": 3324,
             "url": "https://opensensemap.org/explore/649551661d67340007314afb",
             "status": "ok",
-            "fetched_at": "2026-11-17T10:33:53Z",
+            "fetched_at": "2026-11-17T10:35:29Z",
             "quality": "Community sensor; range and freshness checks only",
             "rows": [
               {
@@ -5634,6 +5634,14 @@
                 "humidity_time": "2026-11-17T10:28:43Z",
                 "wind": null,
                 "precipitation": null
+              },
+              {
+                "time": "2026-11-17T10:34:53Z",
+                "temperature": 7.86,
+                "humidity": 96.0,
+                "humidity_time": "2026-11-17T10:32:48Z",
+                "wind": null,
+                "precipitation": null
               }
             ]
           },
@@ -5644,7 +5652,7 @@
             "distance": 12198,
             "url": "https://opensensemap.org/explore/63b2ab763ee774001b3585b1",
             "status": "ok",
-            "fetched_at": "2026-11-17T10:33:53Z",
+            "fetched_at": "2026-11-17T10:35:29Z",
             "quality": "Community sensor; range and freshness checks only",
             "rows": [
               {
@@ -5670,6 +5678,14 @@
                 "humidity_time": "2026-11-17T10:28:51Z",
                 "wind": null,
                 "precipitation": null
+              },
+              {
+                "time": "2026-11-17T10:33:05Z",
+                "temperature": 9.1,
+                "humidity": 99.1,
+                "humidity_time": "2026-11-17T10:33:05Z",
+                "wind": null,
+                "precipitation": null
               }
             ]
           },
@@ -5680,7 +5696,7 @@
             "distance": 12598,
             "url": "https://opensensemap.org/explore/5fcc997efab469001c9c86fc",
             "status": "ok",
-            "fetched_at": "2026-11-17T10:33:53Z",
+            "fetched_at": "2026-11-17T10:35:29Z",
             "quality": "Community sensor; range and freshness checks only",
             "rows": [
               {
@@ -5706,6 +5722,14 @@
                 "humidity_time": "2026-11-17T10:28:34Z",
                 "wind": null,
                 "precipitation": null
+              },
+              {
+                "time": "2026-11-17T10:34:34Z",
+                "temperature": 9.67,
+                "humidity": 99.99,
+                "humidity_time": "2026-11-17T10:34:34Z",
+                "wind": null,
+                "precipitation": null
               }
             ]
           }
@@ -5713,7 +5737,7 @@
         "errors": [],
         "status": "ok",
         "wunderground_status": "not_configured",
-        "fetched_at": "2026-11-17T10:33:53Z",
+        "fetched_at": "2026-11-17T10:35:29Z",
         "search_radius_km": 15
       }
     },
@@ -5729,7 +5753,7 @@
         {
           "id": "dwd_icon",
           "label": "DWD ICON",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=48.0029&longitude=7.8501&models=dwd_icon&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -6920,7 +6944,7 @@
         {
           "id": "ecmwf_ifs025",
           "label": "ECMWF IFS",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=48.0029&longitude=7.8501&models=ecmwf_ifs025&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -8111,7 +8135,7 @@
         {
           "id": "gfs_seamless",
           "label": "NOAA GFS",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=48.0029&longitude=7.8501&models=gfs_seamless&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -9302,7 +9326,7 @@
         {
           "id": "met_no",
           "label": "MET Norway",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=48.0029&lon=7.8501",
           "rows": [
@@ -9938,8 +9962,8 @@
       "observations": {
         "provider": "DWD via Bright Sky",
         "status": "ok",
-        "fetched_at": "2026-11-17T10:33:53Z",
-        "url": "https://api.brightsky.dev/weather?lat=48.0029&lon=7.8501&date=2026-11-10T10%3A33%3A53Z&last_date=2026-11-17T10%3A33%3A53Z&tz=UTC&units=dwd&max_dist=50000",
+        "fetched_at": "2026-11-17T10:35:29Z",
+        "url": "https://api.brightsky.dev/weather?lat=48.0029&lon=7.8501&date=2026-11-10T10%3A35%3A29Z&last_date=2026-11-17T10%3A35%3A29Z&tz=UTC&units=dwd&max_dist=50000",
         "rows": [
           {
             "time": "2026-11-10T11:00:00Z",
@@ -11316,7 +11340,7 @@
             "distance": 1133,
             "url": "https://opensensemap.org/explore/5b8449037c519100190fc728",
             "status": "ok",
-            "fetched_at": "2026-11-17T10:33:53Z",
+            "fetched_at": "2026-11-17T10:35:29Z",
             "quality": "Community sensor; range and freshness checks only",
             "rows": [
               {
@@ -11338,33 +11362,13 @@
             ]
           },
           {
-            "id": "593fc68947df4f001113f9eb",
-            "name": "Freiburg im Breisgau",
-            "provider": "openSenseMap",
-            "distance": 4160,
-            "url": "https://opensensemap.org/explore/593fc68947df4f001113f9eb",
-            "status": "ok",
-            "fetched_at": "2026-11-17T10:33:53Z",
-            "quality": "Community sensor; range and freshness checks only",
-            "rows": [
-              {
-                "time": "2026-11-17T10:28:35Z",
-                "temperature": 16.0,
-                "humidity": 99.9,
-                "humidity_time": "2026-11-17T10:28:35Z",
-                "wind": null,
-                "precipitation": null
-              }
-            ]
-          },
-          {
             "id": "69d8c6b4de85870007064c3e",
             "name": "Feinstaubsensor Au",
             "provider": "openSenseMap",
             "distance": 5664,
             "url": "https://opensensemap.org/explore/69d8c6b4de85870007064c3e",
             "status": "ok",
-            "fetched_at": "2026-11-17T10:33:53Z",
+            "fetched_at": "2026-11-17T10:35:29Z",
             "quality": "Community sensor; range and freshness checks only",
             "rows": [
               {
@@ -11388,6 +11392,34 @@
                 "temperature": 15.43,
                 "humidity": 74.05,
                 "humidity_time": "2026-11-17T10:26:22Z",
+                "wind": null,
+                "precipitation": null
+              },
+              {
+                "time": "2026-11-17T10:35:14Z",
+                "temperature": 15.48,
+                "humidity": 73.72,
+                "humidity_time": "2026-11-17T10:35:14Z",
+                "wind": null,
+                "precipitation": null
+              }
+            ]
+          },
+          {
+            "id": "593fc68947df4f001113f9eb",
+            "name": "Freiburg im Breisgau",
+            "provider": "openSenseMap",
+            "distance": 4160,
+            "url": "https://opensensemap.org/explore/593fc68947df4f001113f9eb",
+            "status": "stale",
+            "fetched_at": "2026-11-17T10:33:53Z",
+            "quality": "Community sensor; range and freshness checks only",
+            "rows": [
+              {
+                "time": "2026-11-17T10:28:35Z",
+                "temperature": 16.0,
+                "humidity": 99.9,
+                "humidity_time": "2026-11-17T10:28:35Z",
                 "wind": null,
                 "precipitation": null
               }
@@ -11417,7 +11449,7 @@
         "errors": [],
         "status": "ok",
         "wunderground_status": "not_configured",
-        "fetched_at": "2026-11-17T10:33:53Z",
+        "fetched_at": "2026-11-17T10:35:29Z",
         "search_radius_km": 15
       }
     },
@@ -11434,7 +11466,7 @@
         {
           "id": "dwd_icon",
           "label": "DWD ICON",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=48.0813&longitude=6.9267&models=dwd_icon&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -12625,7 +12657,7 @@
         {
           "id": "ecmwf_ifs025",
           "label": "ECMWF IFS",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=48.0813&longitude=6.9267&models=ecmwf_ifs025&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -13816,7 +13848,7 @@
         {
           "id": "gfs_seamless",
           "label": "NOAA GFS",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.open-meteo.com/v1/forecast?latitude=48.0813&longitude=6.9267&models=gfs_seamless&hourly=temperature_2m%2Cprecipitation%2Cwind_speed_10m%2Crelative_humidity_2m&forecast_days=7&timezone=UTC&timeformat=unixtime&wind_speed_unit=kmh",
           "rows": [
@@ -15007,7 +15039,7 @@
         {
           "id": "met_no",
           "label": "MET Norway",
-          "fetched_at": "2026-11-17T10:33:53Z",
+          "fetched_at": "2026-11-17T10:35:29Z",
           "status": "ok",
           "url": "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=48.0813&lon=6.9267",
           "rows": [
@@ -15644,7 +15676,7 @@
         "provider": "Météo-France",
         "status": "ok",
         "fetched_at": "2026-11-17T10:29:01Z",
-        "checked_at": "2026-11-17T10:33:53Z",
+        "checked_at": "2026-11-17T10:35:29Z",
         "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_88_latest-2025-2026.csv.gz",
         "dataset_url": "https://www.data.gouv.fr/datasets/donnees-climatologiques-de-base-horaires",
         "publication": "Daily file of hourly observations",
@@ -16968,7 +17000,7 @@
         "errors": [],
         "status": "ok",
         "wunderground_status": "not_configured",
-        "fetched_at": "2026-11-17T10:33:53Z",
+        "fetched_at": "2026-11-17T10:35:29Z",
         "search_radius_km": 15
       }
     }
